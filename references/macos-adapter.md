@@ -9,6 +9,8 @@ The macOS adapter changes discovery, paths, lifecycle, launcher, and path valida
 - The stable [MCP Apps 2026-01-26 specification](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx) defines `inline`, `fullscreen`, and `pip`, requires the View to declare supported modes, and requires it to handle an actual mode different from the request.
 - The official [Codex App Server documentation](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md) documents thread, skill, app, plugin, MCP, approval, stdio, and Unix-socket surfaces. This adapter does not claim access to the Desktop app's private in-process App Server session.
 - Community projects [Taskboard](https://github.com/izscc/taskboard) and [Explodex](https://github.com/dan-dr/explodex/blob/main/docs/codex-architecture.md) demonstrate loopback-CDP injection, OOPIF/CSP constraints, and stable portal/side-panel anchors. They are design references, not compatibility guarantees; every supported Codex build still needs local host acceptance.
+- [Apple HIG Sidebars](https://developer.apple.com/design/human-interface-guidelines/sidebars), [VS Code UX Guidelines](https://code.visualstudio.com/api/ux-guidelines/overview), and [GitHub Primer Product UI](https://primer.style/product/) guide the 48px launcher, complementary panel, three primary modes, contextual actions, and responsive split-layout behavior.
+- The project root [DESIGN.md](../DESIGN.md) follows the open Google Stitch DESIGN.md structure and preserves the repository's earlier creative-cockpit, source-preserving canvas, CSP/XSS, accessibility, and transactional install requirements.
 
 ## Capability map
 

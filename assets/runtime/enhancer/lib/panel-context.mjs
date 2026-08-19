@@ -19,7 +19,7 @@ async function git(projectDir, args) {
   return (await gitOutput(projectDir, args)).trim();
 }
 
-async function readGitContext(projectDir) {
+export async function readGitContext(projectDir) {
   const worktreeRoot = await git(projectDir, ["rev-parse", "--show-toplevel"]).catch(() => "");
   if (!worktreeRoot) return {
     worktreeRoot: null,

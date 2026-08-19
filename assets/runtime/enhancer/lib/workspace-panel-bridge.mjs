@@ -1,3 +1,5 @@
+import { readGitContext } from "./panel-context.mjs";
+
 function json(status, payload) {
   return {
     status,
@@ -45,7 +47,8 @@ export class WorkspacePanelBridge {
       return json(200, { tasks: [{ threadId: this.context.threadId, title: this.context.title || "当前任务", status: "current" }] });
     }
     if (target === "/api/changes" && method === "GET") {
-      return json(200, this.context.git || { branch: "", dirtyCount: 0, ahead: 0, behind: 0, paths: [] });
+      const latest = await readGitContext(this.context.projectDir);
+      return json(200, latest.worktreeRoot ? latest.git : (this.context.git || { branch: "", dirtyCount: 0, ahead: 0, behind: 0, paths: [] }));
     }
     if (target === "/api/tools" && method === "GET") {
       return json(200, { tools: [

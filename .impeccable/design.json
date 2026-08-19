@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-19T22:44:00+08:00",
+  "title": "Design System: Codex Workspace Enhancer",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Focus Blue", "canonical": "#0A84FF", "tonalRamp": ["#06182A", "#0A2947", "#0B426F", "#0862A8", "#0A84FF", "#52A9FF", "#9BD0FF", "#E6F4FF"] },
+      "action": { "role": "primary", "displayName": "Action Blue Deep", "canonical": "#006BD6", "tonalRamp": ["#061625", "#072A45", "#07436D", "#065B96", "#006BD6", "#3F94E7", "#8CC1F1", "#E4F2FC"] },
+      "canvas-dark": { "role": "neutral", "displayName": "Editing Canvas", "canonical": "#0D1016", "tonalRamp": ["#080A0E", "#0D1016", "#171B24", "#272F3B", "#465161", "#727D90", "#AEB6C3", "#F4F7FB"] },
+      "positive": { "role": "positive", "displayName": "Ready Green", "canonical": "#3BCB7F", "tonalRamp": ["#092318", "#0F3C27", "#17603A", "#248C55", "#3BCB7F", "#70DDA0", "#A9EDC5", "#E6FAEE"] }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "UI Title", "purpose": "Project, mode, and section titles." },
+      "body": { "displayName": "UI Body", "purpose": "Tasks, changes, and explanatory content." },
+      "mono": { "displayName": "Path Data", "purpose": "Paths, branches, hashes, and revisions." }
+    },
+    "shadows": [
+      { "name": "dock-separation", "value": "-8px 0 18px rgba(0,0,0,.18)", "purpose": "Separate the complete dock from Codex content." },
+      { "name": "drag-lift", "value": "0 6px 8px rgba(0,0,0,.22)", "purpose": "Only while dragging an asset or canvas node." },
+      { "name": "focus-halo", "value": "0 0 0 3px rgba(10,132,255,.24)", "purpose": "Keyboard focus and selected nodes." }
+    ],
+    "motion": [
+      { "name": "state-fast", "value": "150ms cubic-bezier(.2,.72,.2,1)", "purpose": "Hover, focus, and selection." },
+      { "name": "surface", "value": "220ms cubic-bezier(.2,.72,.2,1)", "purpose": "Dock and section transitions." }
+    ],
+    "breakpoints": [
+      { "name": "dock-narrow", "value": "480px" },
+      { "name": "dock-comfortable", "value": "560px" },
+      { "name": "dock-wide", "value": "720px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "One clear next action for the active mode.",
+      "html": "<button class=\"ds-button-primary\">打开完整画布</button>",
+      "css": ".ds-button-primary{height:40px;padding:0 14px;border:0;border-radius:8px;background:#006BD6;color:#fff;font:600 13px Avenir Next,system-ui;transition:background 150ms cubic-bezier(.2,.72,.2,1),transform 90ms ease-out}.ds-button-primary:hover{background:#005AB8}.ds-button-primary:active{transform:scale(.98)}.ds-button-primary:focus-visible{outline:3px solid rgba(10,132,255,.34);outline-offset:2px}"
+    },
+    {
+      "name": "Mode Navigation",
+      "kind": "nav",
+      "refersTo": "button-ghost",
+      "description": "Three primary modes, with supporting modules inside Workbench.",
+      "html": "<nav class=\"ds-mode-nav\"><button aria-current=\"page\">工作台</button><button>资产</button><button>画布</button></nav>",
+      "css": ".ds-mode-nav{display:flex;gap:4px;padding:4px;background:#171B24;border-radius:8px}.ds-mode-nav button{min-height:40px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:#AEB6C3;font:600 12px Avenir Next,system-ui}.ds-mode-nav button:hover{background:#202631;color:#F4F7FB}.ds-mode-nav button[aria-current=page]{background:#102A47;color:#8BC5FF}.ds-mode-nav button:focus-visible{outline:3px solid rgba(10,132,255,.34)}"
+    },
+    {
+      "name": "Asset Tile",
+      "kind": "custom",
+      "refersTo": "asset-tile",
+      "description": "Image-first tile with filename and folder context.",
+      "html": "<figure class=\"ds-asset-tile\"><div class=\"ds-asset-media\"></div><figcaption><strong>frame-01.png</strong><span>references</span></figcaption></figure>",
+      "css": ".ds-asset-tile{margin:0;overflow:hidden;border-radius:8px;background:#202631;color:#F4F7FB}.ds-asset-media{aspect-ratio:16/10;background:#0D1016}.ds-asset-tile figcaption{display:grid;gap:2px;padding:9px}.ds-asset-tile strong{overflow:hidden;font:600 11px Avenir Next,system-ui;text-overflow:ellipsis;white-space:nowrap}.ds-asset-tile span{color:#AEB6C3;font:450 10px Avenir Next,system-ui}.ds-asset-tile:focus-within{box-shadow:0 0 0 3px rgba(10,132,255,.24)}"
+    },
+    {
+      "name": "Context Row",
+      "kind": "card",
+      "refersTo": "context-strip",
+      "description": "Compact project, task, branch, or authorization information.",
+      "html": "<div class=\"ds-context-row\"><span>分支</span><strong>feat/workspace-panel</strong><small>2 个变更</small></div>",
+      "css": ".ds-context-row{display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;background:#171B24;color:#F4F7FB}.ds-context-row span,.ds-context-row small{color:#AEB6C3;font:500 11px Avenir Next,system-ui}.ds-context-row strong{overflow:hidden;font:500 11px SFMono-Regular,monospace;text-overflow:ellipsis;white-space:nowrap}"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "description": "Filter assets without moving focus away from the dock.",
+      "html": "<label class=\"ds-search\"><span>⌕</span><input placeholder=\"搜索图片或文件夹\"></label>",
+      "css": ".ds-search{display:flex;height:40px;align-items:center;gap:8px;padding:0 11px;border:1px solid #303641;border-radius:8px;background:#171B24;color:#AEB6C3}.ds-search input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:#F4F7FB;font:450 12px Avenir Next,system-ui}.ds-search input::placeholder{color:#AEB6C3}.ds-search:focus-within{border-color:#0A84FF;box-shadow:0 0 0 3px rgba(10,132,255,.24)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Working Contact Sheet",
+    "overview": "界面是一张紧贴 Codex 对话的工作接触印相表，也是本机创意生产 cockpit。真实素材比容器更醒目，操作状态比装饰更清楚，受保护交付区域不接受自动破坏性处理。",
+    "keyCharacteristics": ["图片和画布节点占主要面积", "只有工作台、资产、画布三个一级模式", "Action Blue 只表示选择、动作和信息状态", "Dock 使用紧凑行与缩略图而非同尺寸卡片", "Dock 与原生 MCP App 共享同一 board revision"],
+    "rules": [
+      { "name": "The Material Carries Color Rule", "body": "界面的饱和色主要来自用户图片。", "section": "colors" },
+      { "name": "The Ten Percent Blue Rule", "body": "Focus Blue 在单屏最多覆盖约 10%。", "section": "colors" },
+      { "name": "The Flat Until Active Rule", "body": "静止表面没有装饰性投影。", "section": "elevation" }
+    ],
+    "dos": ["Do 让用户进入面板后立刻看到项目名、实际图片和画布关系。", "Do 使用 8px 基础节奏、40px 交互目标和清楚的键盘焦点。", "Do 把恶意文件名当作文本并以 CSP 阻止 inline execution。", "Do 让安装、更新与卸载只修改 owned user-library paths 并作为事务回滚。"],
+    "donts": ["Don't 使用六个等权横向标签和重复状态卡片。", "Don't 使用紫蓝渐变、霓虹发光和默认玻璃拟态。", "Don't 自动发送输入或维护第二套画布状态。", "Don't 修改签名应用包或让自动化处理 FinalDelivery 等受保护区域。"]
+  }
+}

@@ -70,7 +70,7 @@
   "consentReport": {
     "beforeApproval": {
       "projectPath": "/Users/qa/creative-project",
-      "expiryText": "批准一次后，同一 Git 仓库的已校验 Codex worktree 可直接打开。本次确认请求可跨插件重启恢复，并将在 22:42 到期；会话授权空闲 2 小时或最长 12 小时后失效。",
+      "expiryText": "批准一次后，同一 Git 仓库的已校验 Codex worktree 可直接打开。本次确认请求可跨插件重启恢复，并将在 23:54 到期；会话授权空闲 2 小时或最长 12 小时后失效。",
       "displayMode": "inline",
       "toast": "当前 Codex 宿主不提供全屏模式",
       "calls": [

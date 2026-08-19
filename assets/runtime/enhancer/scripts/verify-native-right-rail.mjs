@@ -13,14 +13,27 @@ try {
 }
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const repositoryRoot = path.resolve(root, "../../..");
 const injection = await readFile(path.join(root, "inject", "conversation-preview.user.js"), "utf8");
 const panelRoot = path.join(root, "panel", "public");
+const LONG_PROJECT_NAME = "跨项目视觉工作区与品牌片参考资产整合验收";
+const LONG_THREAD_TITLE = "验证超长中文任务标题、复杂 worktree 路径和多模块上下文在窄面板中的重排";
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: "dark" });
 const cdp = await page.context().newCDPSession(page);
 const consoleErrors = [];
 const pageErrors = [];
 let lifecycleMetrics = null;
+let boardSaves = 0;
+let panelMetrics = null;
+let panelReduced = null;
+let panelContrast = null;
+const responsiveMatrix = [];
+let previewActive = 0;
+let previewMaxActive = 0;
+let previewRequests = 0;
+let changeReads = 0;
+let savedBoard = null;
 page.on("console", (message) => {
   if (message.type() === "error") consoleErrors.push(message.text());
 });
@@ -64,13 +77,50 @@ try {
         return route.fulfill({ status: 200, contentType, body: await readFile(path.join(panelRoot, name), "utf8") });
       }
       const apiPayloads = {
-        "api/status": { version: "0.3.0", bridgeState: "ready", threadId: "mock-thread", threadTitle: "面板验收", projectDir: "/tmp/project", projectName: "Workspace Panel", accessState: "approved", authorizationSource: "host-root" },
-        "api/workspace": { assets: [{ name: "frame-01.png", folder: "references" }], board: { rev: 3, nodes: [{ id: "node-1" }], selectedIds: [] }, truncated: false },
-        "api/tasks": { tasks: [{ threadId: "mock-thread", title: "面板验收", status: "current" }] },
+        "api/status": { version: "0.3.0", bridgeState: "ready", threadId: "mock-thread", threadTitle: LONG_THREAD_TITLE, projectDir: "/Users/qa/Creative Projects/2026/Codex Workspace Enhancer/超长项目路径/当前工作树", projectName: LONG_PROJECT_NAME, accessState: "approved", authorizationSource: "host-root" },
+        "api/workspace": { assets: Array.from({ length: 12 }, (_, index) => ({
+          name: `frame-${String(index + 1).padStart(2, "0")}.png`,
+          folder: index < 8 ? "references" : "outputs",
+          relPath: index === 0 ? "references/frame-01.png" : index === 1 ? "references/frame-02.png" : index === 2 ? "outputs/board.png" : `references/frame-${String(index + 1).padStart(2, "0")}.png`,
+        })), board: savedBoard || { rev: 3, nodes: [
+          { id: "node-1", kind: "asset", relPath: "references/frame-01.png", label: "Frame 01", x: 0, y: 0, width: 320, height: 220 },
+          { id: "node-2", kind: "note", text: "保持人物方向一致", tone: "amber", x: 360, y: 80, width: 220, height: 160 },
+        ], selectedIds: ["node-1"] }, truncated: false },
+        "api/tasks": { tasks: [{ threadId: "mock-thread", title: LONG_THREAD_TITLE, status: "current" }] },
         "api/changes": { branch: "feat/panel", dirtyCount: 2, ahead: 1, behind: 0, paths: ["panel.js", "panel.css"] },
-        "api/tools": { tools: [{ id: "review", label: "Review", available: true, action: "native-route" }] },
+        "api/tools": { tools: [
+          { id: "visual-workspace", label: "Visual Workspace", available: true, action: "native-mcp-app" },
+          { id: "review", label: "Review", available: true, action: "native-route" },
+        ] },
       };
+      if (relative === "api/asset/read") {
+        previewRequests += 1;
+        previewActive += 1;
+        previewMaxActive = Math.max(previewMaxActive, previewActive);
+        await new Promise((resolve) => setTimeout(resolve, 24));
+        const input = JSON.parse(route.request().postData() || "{}");
+        const sources = {
+          "references/frame-01.png": "assets/ui-review/native-visual-workspace-dark.png",
+          "references/frame-02.png": "assets/ui-review/native-visual-workspace-light.png",
+          "outputs/board.png": "assets/ui-review/asset-console-canvas-dark.png",
+        };
+        const source = sources[input.relPath] || sources["references/frame-01.png"];
+        const dataBase64 = (await readFile(path.join(repositoryRoot, source))).toString("base64");
+        previewActive -= 1;
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ mimeType: "image/png", dataBase64 }) });
+      }
+      if (relative === "api/board/save") {
+        boardSaves += 1;
+        const input = JSON.parse(route.request().postData() || "{}");
+        if (boardSaves === 2) {
+          savedBoard = { ...input, rev: 9 };
+          return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ conflict: true, currentBoard: savedBoard }) });
+        }
+        savedBoard = { ...input, rev: input.baseRev + 1 };
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ board: savedBoard }) });
+      }
       if (relative === "api/tools/action") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ action: "composer-prefilled", sent: false }) });
+      if (relative === "api/changes") changeReads += 1;
       if (apiPayloads[relative]) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiPayloads[relative]) });
       return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "not found" }) });
     }
@@ -153,16 +203,90 @@ try {
   await page.click("[data-codex-workspace-tool='workspace']");
   await page.waitForSelector("#codex-asset-console-panel[data-panel-kind='workspace'] iframe");
   const workspaceFrame = page.frameLocator("#codex-asset-console-frame");
-  await workspaceFrame.locator("#panelTitle").filter({ hasText: "Workspace Panel" }).waitFor();
+  await workspaceFrame.locator("#panelTitle").filter({ hasText: LONG_PROJECT_NAME }).waitFor();
   assert.deepEqual(
     await workspaceFrame.locator("#panelTabs button").allTextContents(),
-    ["总览", "资产", "画布", "任务", "变更", "工具"],
+    ["工作台", "资产", "画布"],
   );
-  await workspaceFrame.getByRole("tab", { name: "变更" }).click();
+  await workspaceFrame.locator(".asset-tile img[src^='blob:']").first().waitFor();
+  await workspaceFrame.locator(".compact-canvas .canvas-node[data-kind='asset']").waitFor();
   await workspaceFrame.getByText("feat/panel").waitFor();
-  await workspaceFrame.getByRole("tab", { name: "工具" }).click();
-  await workspaceFrame.getByRole("button", { name: "在 Codex 中打开" }).click();
+  panelMetrics = await workspaceFrame.locator("body").evaluate((body) => {
+    const targets = [...body.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().width > 0);
+    return {
+      minimumTargetHeight: Math.min(...targets.map((button) => button.getBoundingClientRect().height)),
+      overflowX: body.scrollWidth - body.clientWidth,
+      primaryModes: [...body.querySelectorAll("#panelTabs button")].map((button) => button.textContent.trim()),
+    };
+  });
+  assert.ok(panelMetrics.minimumTargetHeight >= 40, JSON.stringify(panelMetrics));
+  assert.equal(panelMetrics.overflowX, 0);
+  for (const width of [420, 560, 720]) {
+    await page.evaluate((nextWidth) => {
+      document.querySelector("#codex-asset-console-panel")?.style.setProperty("--codex-workspace-dock-width", `${nextWidth}px`);
+    }, width);
+    await page.waitForTimeout(80);
+    const parentWidth = await page.locator("#codex-asset-console-panel").evaluate((panel) => panel.getBoundingClientRect().width);
+    const metrics = await workspaceFrame.locator("body").evaluate((body) => {
+      const buttons = [...body.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().width > 0);
+      const footer = body.querySelector(".panel-footer").getBoundingClientRect();
+      const content = body.querySelector(".panel-content");
+      content.scrollTop = content.scrollHeight;
+      const maxScrollTop = content.scrollTop;
+      content.scrollTop = 0;
+      const firstMode = body.querySelector("#panelTabs button");
+      firstMode.focus();
+      return {
+        overflowX: body.scrollWidth - body.clientWidth,
+        minimumTargetWidth: Math.min(...buttons.map((button) => button.getBoundingClientRect().width)),
+        minimumTargetHeight: Math.min(...buttons.map((button) => button.getBoundingClientRect().height)),
+        footerVisible: footer.top >= 0 && footer.bottom <= window.innerHeight + 0.5,
+        contentScrollable: content.scrollHeight > content.clientHeight && maxScrollTop > 0,
+        focusOutline: getComputedStyle(firstMode).outlineWidth,
+      };
+    });
+    responsiveMatrix.push({ width, parentWidth, ...metrics });
+    assert.ok(Math.abs(parentWidth - width) <= 1, JSON.stringify(responsiveMatrix.at(-1)));
+    assert.equal(metrics.overflowX, 0, JSON.stringify(responsiveMatrix.at(-1)));
+    assert.ok(metrics.minimumTargetWidth >= 40 && metrics.minimumTargetHeight >= 40, JSON.stringify(responsiveMatrix.at(-1)));
+    assert.equal(metrics.footerVisible, true, JSON.stringify(responsiveMatrix.at(-1)));
+    assert.equal(metrics.contentScrollable, true, JSON.stringify(responsiveMatrix.at(-1)));
+    assert.equal(metrics.focusOutline, "3px", JSON.stringify(responsiveMatrix.at(-1)));
+    await page.screenshot({ path: `/tmp/codex-workspace-panel-${width}.png` });
+  }
+  await page.evaluate(() => document.querySelector("#codex-asset-console-panel")?.style.setProperty("--codex-workspace-dock-width", "560px"));
+  await page.waitForTimeout(5_200);
+  assert.ok(changeReads >= 2, `dynamic Git reads ${changeReads}`);
+  await page.screenshot({ path: "/tmp/codex-workspace-panel-overview-dark.png" });
+  await workspaceFrame.getByRole("button", { name: "加入画布" }).first().click();
+  await workspaceFrame.getByText("已加入画布").waitFor();
+  await workspaceFrame.getByText("Revision 4").waitFor();
+  assert.equal(boardSaves, 1);
+  await workspaceFrame.getByRole("button", { name: "加入画布" }).first().click();
+  await workspaceFrame.getByText("画布已在另一个视图更新").waitFor();
+  await workspaceFrame.getByText("Revision 9").waitFor();
+  assert.equal(boardSaves, 2);
+  await workspaceFrame.getByRole("button", { name: /准备打开画布/u }).click();
   await workspaceFrame.getByText("尚未发送").waitFor();
+  await workspaceFrame.getByRole("button", { name: "资产", exact: true }).click();
+  await workspaceFrame.locator(".asset-contact-sheet .asset-tile").first().waitFor();
+  await workspaceFrame.locator(".asset-tile img[src^='blob:']").nth(5).waitFor();
+  assert.ok(previewRequests >= 6);
+  assert.ok(previewMaxActive <= 3, `preview concurrency ${previewMaxActive}`);
+  await page.screenshot({ path: "/tmp/codex-workspace-panel-assets-dark.png" });
+  await workspaceFrame.getByRole("button", { name: "画布", exact: true }).click();
+  await workspaceFrame.locator(".compact-canvas[data-tall='true']").waitFor();
+  panelContrast = await workspaceFrame.locator(".action-button.primary").evaluate((button) => {
+    const parse = (value) => value.match(/[\d.]+/gu).slice(0, 3).map((part) => Number(part) / 255);
+    const luminance = (value) => {
+      const channels = parse(value).map((part) => part <= 0.04045 ? part / 12.92 : ((part + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    };
+    const styles = getComputedStyle(button);
+    const values = [luminance(styles.color), luminance(styles.backgroundColor)].sort((left, right) => right - left);
+    return (values[0] + 0.05) / (values[1] + 0.05);
+  });
+  assert.ok(panelContrast >= 4.5, `primary contrast ${panelContrast}`);
   assert.equal(await page.getAttribute("[data-codex-workspace-tool='workspace']", "aria-pressed"), "true");
   assert.equal(await page.evaluate(() => window.__workspaceActions.at(-1)?.panel), "workspace");
   await page.screenshot({ path: "/tmp/codex-workspace-panel-dark.png" });
@@ -181,13 +305,15 @@ try {
     const state = document.querySelector(".codex-asset-console-state");
     const body = document.querySelector(".codex-asset-console-body").getBoundingClientRect();
     const frame = document.querySelector("#codex-asset-console-frame").getBoundingClientRect();
+    const resizer = document.querySelector(".codex-asset-console-resizer").getBoundingClientRect();
     return {
       stateHidden: state.hidden,
       stateDisplay: getComputedStyle(state).display,
       frameMatchesBody: Math.abs(frame.width - body.width) <= 1 && Math.abs(frame.height - body.height) <= 1,
+      resizerWidth: resizer.width,
     };
   });
-  assert.deepEqual(readyLayout, { stateHidden: true, stateDisplay: "none", frameMatchesBody: true });
+  assert.deepEqual(readyLayout, { stateHidden: true, stateDisplay: "none", frameMatchesBody: true, resizerWidth: 40 });
   const opened = await page.evaluate(() => {
     const panel = document.querySelector("#codex-asset-console-panel");
     const canvas = document.querySelector("[data-codex-workspace-tool='canvas']");
@@ -202,7 +328,7 @@ try {
   assert.equal(opened.role, "complementary");
   assert.equal(opened.view, "canvas");
   assert.equal(opened.canvasPressed, "true");
-  assert.ok(opened.width >= 600);
+  assert.ok(opened.width >= 540);
   assert.equal(opened.actions.at(-1)?.action, "open");
 
   await page.evaluate(() => {
@@ -256,6 +382,18 @@ try {
   await page.keyboard.press("Escape");
   await page.waitForSelector("#codex-asset-console-panel", { state: "detached" });
   assert.equal(await page.getAttribute("[data-codex-workspace-tool='canvas']", "aria-pressed"), "false");
+
+  await page.click("[data-codex-workspace-tool='workspace']");
+  await workspaceFrame.locator(".workbench-view").waitFor();
+  panelReduced = await workspaceFrame.locator("body").evaluate((body) => ({
+    background: getComputedStyle(body).backgroundColor,
+    transitionDuration: getComputedStyle(body.querySelector("#panelTabs button")).transitionDuration,
+  }));
+  assert.notEqual(panelReduced.background, "rgba(0, 0, 0, 0)");
+  assert.ok(panelReduced.transitionDuration.split(",").every((value) => Number.parseFloat(value) <= 0.00001));
+  await page.screenshot({ path: "/tmp/codex-workspace-panel-light.png" });
+  await workspaceFrame.locator("body").press("Escape");
+  await page.waitForSelector("#codex-asset-console-panel", { state: "detached" });
 
   await page.click("[data-codex-workspace-tool='grid']");
   assert.equal(await page.getAttribute("#codex-asset-console-panel", "data-view"), "grid");
@@ -333,11 +471,19 @@ try {
     tools: initial.labels,
     panelWidth: resized.width,
     minimumTarget: 40,
-    screenshots: ["/tmp/codex-workspace-panel-dark.png", "/tmp/codex-native-right-rail-dark.png", "/tmp/codex-native-right-rail-light.png"],
+    screenshots: ["/tmp/codex-workspace-panel-420.png", "/tmp/codex-workspace-panel-560.png", "/tmp/codex-workspace-panel-720.png", "/tmp/codex-workspace-panel-overview-dark.png", "/tmp/codex-workspace-panel-assets-dark.png", "/tmp/codex-workspace-panel-dark.png", "/tmp/codex-workspace-panel-light.png", "/tmp/codex-native-right-rail-dark.png", "/tmp/codex-native-right-rail-light.png"],
     reduced,
     lifecycle: lifecycleMetrics,
     consoleErrors: consoleErrors.length,
     pageErrors: pageErrors.length,
+    boardSaves,
+    panelMetrics,
+    panelReduced,
+    panelContrast,
+    responsiveMatrix,
+    previewRequests,
+    previewMaxActive,
+    changeReads,
   }, null, 2)}\n`);
 } finally {
   await browser.close();

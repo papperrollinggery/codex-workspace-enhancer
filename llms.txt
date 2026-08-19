@@ -6,7 +6,7 @@ Canonical repository: https://github.com/papperrollinggery/codex-workspace-enhan
 
 The preferred native plugin uses an stdio MCP server and a sandboxed `ui://` view. It scans project images read-only after a matching host root or one-time exact-path in-widget approval. An approved path and validated Codex worktrees linked to the same Git repository reopen directly without repeated approval clicks. Pending first-approval requests survive normal MCP server restarts for up to 12 hours. It stores revisioned canvas state in user application data and attaches selected paths as structured conversation context without automatically sending a message. Inline, fullscreen, and PiP are requested independently from the host's actual display result.
 
-The optional macOS panel runs only in an isolated loopback-CDP Codex window. It exposes six visible modules—overview, assets, canvas, tasks, Git changes, and tools—while reusing the installed native Visual Workspace MCP session. It does not start a panel HTTP server, does not require the legacy AssetBrowser `5177` service, and never auto-sends composer text.
+The optional macOS panel runs only in an isolated loopback-CDP Codex window. It exposes Workbench, Assets, and Canvas as three primary modes; Workbench integrates task, Git change, and tool context. It reuses the installed native Visual Workspace MCP session, starts no panel HTTP server, does not require the legacy AssetBrowser `5177` service, and never auto-sends composer text.
 
 ## Documentation
 

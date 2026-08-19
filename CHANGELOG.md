@@ -7,7 +7,7 @@ All notable public changes are documented here. Versions follow Semantic Version
 ### Added
 
 - Negotiate picture-in-picture alongside inline and fullscreen while preserving requested and actual display modes as separate receipt fields.
-- Add an optional macOS right-side workspace panel with overview, assets, canvas, task, Git change, and tool modules.
+- Add an optional macOS right-side workspace panel with Workbench, Assets, and Canvas primary modes; Workbench integrates task, Git change, and tool context.
 - Reuse the installed native Visual Workspace MCP server and its private approved session; no second canvas store or panel HTTP server is introduced.
 - Add bounded Git/worktree status and allowlisted native tool actions that either open a verified control or prefill the composer without sending.
 - Add explicit `enhanced-window`, `attach-existing`, and `stop` lifecycle modes plus stopped-port verification.

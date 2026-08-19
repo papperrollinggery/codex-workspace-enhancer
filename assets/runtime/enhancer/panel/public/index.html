@@ -10,12 +10,22 @@
 <body>
   <div id="panelApp" class="panel-app" aria-busy="true">
     <header id="panelHeader" class="panel-header">
-      <div><span class="eyebrow">WORKSPACE</span><strong id="panelTitle">当前工作区</strong></div>
-      <span id="connectionState" class="connection-state">连接中</span>
+      <span class="panel-brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="M7 3v14M7 8h10M10 11h4M10 14h2"/></svg>
+      </span>
+      <div class="panel-project-copy">
+        <strong id="panelTitle">当前工作区</strong>
+        <span id="panelContext">正在读取项目上下文</span>
+      </div>
+      <span id="connectionState" class="connection-state"><i aria-hidden="true"></i>连接中</span>
     </header>
     <nav id="panelTabs" class="panel-tabs" aria-label="工作台模块"></nav>
     <main id="panelContent" class="panel-content" tabindex="-1"></main>
-    <footer id="panelStatus" class="panel-status" aria-live="polite">正在初始化工作台</footer>
+    <footer class="panel-footer">
+      <span class="panel-status-dot" aria-hidden="true"></span>
+      <span id="panelStatus" class="panel-status" aria-live="polite">正在初始化工作台</span>
+      <kbd>Esc</kbd>
+    </footer>
   </div>
   <script type="module" src="./panel.js"></script>
 </body>

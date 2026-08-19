@@ -1,6 +1,6 @@
 # Codex Workspace Enhancer
 
-**面向 OpenAI Codex 的原生视觉工作区与可选 macOS 右侧工作面板。** 原生 MCP App 通过 stdio 运行、无需端口；可选面板在隔离的增强版 Codex 窗口中提供总览、资产、画布、任务、Git 变更和工具入口。
+**面向 OpenAI Codex 的原生视觉工作区与可选 macOS 右侧工作面板。** 原生 MCP App 通过 stdio 运行、无需端口；可选面板以“工作台、资产、画布”为三个一级模式，并把任务、Git 变更和工具自然融入工作台。
 
 [English](README.md) · [架构](references/native-plugin.md) · [安全策略](SECURITY.md) · [AI 可读摘要](llms.txt)
 
@@ -39,6 +39,10 @@ codex plugin add codex-workspace-enhancer@codex-workspace-enhancer
 ### 可选：macOS 右侧工作面板
 
 右侧面板不是宿主自动提供的插件栏位，而是仓库自带、可卸载的 macOS 增强运行时。它不会修改 `/Applications/Codex.app`，也不会影响普通 Codex 窗口：
+
+![Codex Workspace Enhancer macOS 右侧工作面板](assets/ui-review/codex-workspace-panel-dark.png)
+
+_自动化宿主布局验收画面：工作台直接展示项目图片、同一画布 revision、当前任务和不会自动发送的工具动作。_
 
 ```bash
 node assets/runtime/enhancer/scripts/install-macos.mjs --dry-run

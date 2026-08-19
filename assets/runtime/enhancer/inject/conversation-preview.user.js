@@ -20,7 +20,7 @@
   const WORKSPACE_TOOL_RAIL_ID = "codex-workspace-tool-rail";
   const WORKSPACE_DOCK_WIDTH_KEY = "codex-workspace-enhancer:right-dock-width-v1";
   const WORKSPACE_DOCK_MIN_WIDTH = 420;
-  const WORKSPACE_DOCK_DEFAULT_WIDTH = 620;
+  const WORKSPACE_DOCK_DEFAULT_WIDTH = 560;
   const SKILL_ORGANIZER_ID = "codex-skill-organizer";
   const SKILL_FAVORITES_KEY = "codex-workspace-enhancer:skill-favorites-v1";
   const SKILL_NATIVE_SECTION_ATTR = "data-codex-skill-native-section";
@@ -390,7 +390,7 @@
         border-radius: 15px;
         background: color-mix(in srgb, var(--color-token-main-surface-primary, #171717) 82%, transparent);
         color: var(--color-token-text-primary, #f5f5f5);
-        box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent), 0 12px 32px color-mix(in srgb, black 22%, transparent);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent), 0 4px 8px color-mix(in srgb, black 18%, transparent);
         backdrop-filter: blur(18px) saturate(116%);
         -webkit-backdrop-filter: blur(18px) saturate(116%);
       }
@@ -420,7 +420,8 @@
       #${WORKSPACE_TOOL_RAIL_ID} [data-codex-workspace-tool][aria-pressed="true"] {
         background: color-mix(in srgb, #2f95ff 18%, transparent);
         color: #68b1ff;
-        box-shadow: inset 3px 0 0 #2f95ff;
+        outline: 1px solid color-mix(in srgb, #2f95ff 36%, transparent);
+        outline-offset: -1px;
       }
       #${WORKSPACE_TOOL_RAIL_ID} [data-codex-workspace-tool]:focus-visible {
         outline: 3px solid var(--color-token-accent-foreground, Highlight);
@@ -463,32 +464,31 @@
         right: 68px;
         bottom: 0;
         grid-template-rows: 46px minmax(0, 1fr);
-        width: var(--codex-workspace-dock-width, 620px);
+        width: var(--codex-workspace-dock-width, 560px);
         min-width: ${WORKSPACE_DOCK_MIN_WIDTH}px;
         max-width: calc(100vw - 84px);
         box-sizing: border-box;
-        overflow: hidden;
-        border: 0.5px solid color-mix(in srgb, currentColor 14%, transparent);
-        border-bottom: 0;
+        overflow: visible;
+        border: 0;
         border-radius: 14px 0 0 0;
         background: var(--color-token-main-surface-primary, #101010);
         color: var(--color-token-text-primary, #f5f5f5);
-        box-shadow: -14px 0 36px color-mix(in srgb, black 18%, transparent);
+        box-shadow: inset 1px 0 color-mix(in srgb, currentColor 14%, transparent), -8px 0 14px color-mix(in srgb, black 18%, transparent);
       }
       #${ASSET_CONSOLE_PANEL_ID} .codex-asset-console-resizer {
         position: absolute;
         z-index: 4;
         top: 0;
         bottom: 0;
-        left: 0;
-        width: 8px;
+        left: -20px;
+        width: 40px;
         cursor: ew-resize;
         touch-action: none;
       }
       #${ASSET_CONSOLE_PANEL_ID} .codex-asset-console-resizer::after {
         position: absolute;
         top: 50%;
-        left: 2px;
+        left: 18px;
         width: 3px;
         height: 44px;
         border-radius: 999px;
@@ -515,6 +515,7 @@
         padding: 0 10px 0 14px;
         border-bottom: 0.5px solid color-mix(in srgb, currentColor 12%, transparent);
         background: color-mix(in srgb, var(--color-token-main-surface-secondary, #151515) 92%, transparent);
+        border-radius: 14px 0 0 0;
       }
       #${ASSET_CONSOLE_PANEL_ID} .codex-asset-console-title {
         min-width: 0;
@@ -600,6 +601,8 @@
       }
       #${ASSET_CONSOLE_PANEL_ID} .codex-asset-console-retry {
         display: none;
+        min-height: 40px;
+        align-items: center;
         padding: 6px 11px;
         border: 0.5px solid color-mix(in srgb, currentColor 16%, transparent);
         border-radius: 8px;
@@ -1973,10 +1976,20 @@
   }
 
   function currentComposer() {
-    return Array.from(document.querySelectorAll('[contenteditable="true"]')).find((node) => {
+    const candidates = Array.from(document.querySelectorAll('[contenteditable="true"]')).filter((node) => {
       const rect = node.getBoundingClientRect();
-      return rect.width > 80 && rect.height > 20 && !node.closest(`#${ASSET_CONSOLE_PANEL_ID}`);
-    }) || null;
+      return rect.width > 80
+        && rect.height > 20
+        && !node.closest(`#${ASSET_CONSOLE_PANEL_ID}, aside, header, [role="dialog"]`);
+    });
+    return candidates.find((node) => node.matches('.ProseMirror[role="textbox"][aria-multiline="true"]'))
+      || candidates.find((node) => node.getAttribute("role") === "textbox" && node.getAttribute("aria-multiline") === "true")
+      || candidates.sort((left, right) => {
+        const a = left.getBoundingClientRect();
+        const b = right.getBoundingClientRect();
+        return (b.width * b.height) - (a.width * a.height);
+      })[0]
+      || null;
   }
 
   function prefillComposer(text) {
@@ -2318,8 +2331,8 @@
     panel.innerHTML = `
       <div class="codex-asset-console-resizer" role="separator" aria-label="调整资产面板宽度" aria-orientation="vertical" tabindex="0"></div>
       <header class="codex-asset-console-header">
-        <span class="codex-asset-console-title">${panelLabel}</span>
-        <span class="codex-asset-console-local">${isWorkspacePanel ? "MCP 本机桥接" : "本机直连"}</span>
+        <span class="codex-asset-console-title" data-codex-panel-title></span>
+        <span class="codex-asset-console-local" data-codex-panel-connection></span>
         <span class="codex-asset-console-spacer"></span>
         <button type="button" class="codex-asset-console-action" data-codex-asset-console-refresh aria-label="刷新资产控制台" title="刷新">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M12.7 5.2A5.4 5.4 0 1 0 13 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M10.2 5.2h2.8V2.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -2331,10 +2344,15 @@
       <div class="codex-asset-console-body">
         <div class="codex-asset-console-state" role="status">
           <span class="codex-asset-console-spinner" aria-hidden="true"></span>
-          <span class="codex-asset-console-message">${isWorkspacePanel ? "正在连接当前 Codex 工作区…" : "正在连接本机资产库…"}</span>
+          <span class="codex-asset-console-message"></span>
           <button type="button" class="codex-asset-console-retry">重新连接</button>
         </div>
       </div>`;
+    panel.querySelector("[data-codex-panel-title]").textContent = panelLabel;
+    panel.querySelector("[data-codex-panel-connection]").textContent = isWorkspacePanel ? "MCP 本机桥接" : "本机直连";
+    panel.querySelector(".codex-asset-console-message").textContent = isWorkspacePanel ? "正在连接当前 Codex 工作区…" : "正在连接本机资产库…";
+    panel.querySelector("[data-codex-asset-console-refresh]").setAttribute("aria-label", `刷新${panelLabel}`);
+    panel.querySelector("[data-codex-asset-console-close]").setAttribute("aria-label", `关闭${panelLabel}`);
     installAssetConsoleResizer(panel);
     panel.querySelector("[data-codex-asset-console-close]").onclick = () => closeAssetConsolePanel();
     panel.querySelector("[data-codex-asset-console-refresh]").onclick = () => {

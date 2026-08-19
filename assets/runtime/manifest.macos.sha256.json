@@ -1,6 +1,6 @@
 {
   "format": "codex-workspace-enhancer-macos-v1",
-  "generatedAt": "2026-08-19T13:53:57.726Z",
+  "generatedAt": "2026-08-19T14:54:25.385Z",
   "files": [
     {
       "path": "asset-browser/asset-browser.config.example.json",
@@ -178,8 +178,8 @@
     },
     {
       "path": "enhancer/inject/conversation-preview.user.js",
-      "sha256": "7a3f74ed02c7cc36e18fd51e0b738ac6b1d2fd8846cfe2c3bb32d313ed9fd996",
-      "size": 194623,
+      "sha256": "9b04abe660bef93b1aaa5adf180821c29317dbbb496ed4ba9d90558728dbfc51",
+      "size": 195747,
       "executable": false
     },
     {
@@ -238,8 +238,8 @@
     },
     {
       "path": "enhancer/lib/panel-context.mjs",
-      "sha256": "df44e9d056b63ce9ce81d8b92baf3add66af95c9a743e1e2dfb883da4c12f051",
-      "size": 5563,
+      "sha256": "182c3ae6446399f683270edfab13fc7d478da3bf5790df11df76da8688729d12",
+      "size": 5570,
       "executable": false
     },
     {
@@ -268,8 +268,8 @@
     },
     {
       "path": "enhancer/lib/workspace-panel-bridge.mjs",
-      "sha256": "6d33a0b40dbc52baafd89fc7ab02ee58f0dd7f5d7e1a83768e0e852993097881",
-      "size": 4637,
+      "sha256": "e57498dcf0b0ace77103874b8db6b3683cdde07b1cad1143bba5d7c049a7db18",
+      "size": 4797,
       "executable": false
     },
     {
@@ -292,8 +292,8 @@
     },
     {
       "path": "enhancer/panel/public/index.html",
-      "sha256": "0ab76c57f98b58e74a39755b32dee2cfb01dbaa996fc0206338d24f8778267b3",
-      "size": 918,
+      "sha256": "6f652048d97e1c12e72b7a3d5124f6cbccfd9cd76e15fb2f8e5de0adb27b5f22",
+      "size": 1361,
       "executable": false
     },
     {
@@ -304,14 +304,14 @@
     },
     {
       "path": "enhancer/panel/public/panel.css",
-      "sha256": "493d0d0a9bbb00f2cef9815a6ae05b38c144fa03117522528ea0363a3877701c",
-      "size": 3427,
+      "sha256": "d1fa4b65e1228624665797a0ee046d5fcc30645812b8d86cdfc4ed5f95c5548f",
+      "size": 17957,
       "executable": false
     },
     {
       "path": "enhancer/panel/public/panel.js",
-      "sha256": "91f3b44c40dbeb39032a1eb6dbd8a5c69610ec9cb6294d982f393bdc11b5b7eb",
-      "size": 7498,
+      "sha256": "cefb9e4a9a39345ebee361d093e2ca43b7908762a4198c5da68d0dc2e43f0ca3",
+      "size": 28274,
       "executable": false
     },
     {
@@ -412,8 +412,8 @@
     },
     {
       "path": "enhancer/scripts/verify-native-right-rail.mjs",
-      "sha256": "6d45b3311041cd34b0da9175af8003b4b1ddc806dc630e64c14d1c1b15b79bc1",
-      "size": 18849,
+      "sha256": "9ce59003b7db5748586f5d00845ad92270cfe7d08c363eccddb242b34822debd",
+      "size": 28082,
       "executable": false
     },
     {
@@ -466,8 +466,8 @@
     },
     {
       "path": "enhancer/test/native-right-rail.test.mjs",
-      "sha256": "3a21dd9c313b3d55fcad79e9bb7e8018f157af7209f6019f8b750722b5e643cd",
-      "size": 3867,
+      "sha256": "7f2e8d648e7876e2be29c11f8973926085818b0dfcae9157135943253db53e77",
+      "size": 4276,
       "executable": false
     },
     {
@@ -492,6 +492,12 @@
       "path": "enhancer/test/panel-module-registry.test.mjs",
       "sha256": "67e695177f8b0de969ba55361d7a88e7c2cae8f0c27b28c71e9bc034a6396df5",
       "size": 1978,
+      "executable": false
+    },
+    {
+      "path": "enhancer/test/panel-ui.test.mjs",
+      "sha256": "65854da3ea8c382bade9359d970ee2ef60737d37941afc8bb2b356c60a2c201c",
+      "size": 3317,
       "executable": false
     },
     {

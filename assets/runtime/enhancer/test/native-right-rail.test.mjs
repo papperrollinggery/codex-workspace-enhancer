@@ -63,8 +63,12 @@ test("right rail exposes the native workspace panel as a first-class macOS surfa
   assert.match(injection, /panel: "workspace"/u);
   assert.match(injection, /function setWorkspacePanel\(/u);
   assert.match(injection, /function setWorkspacePanelFrame\(/u);
+  assert.match(injection, /\.ProseMirror\[role="textbox"\]\[aria-multiline="true"\]/u);
   assert.match(injection, /setWorkspacePanel,/u);
   assert.match(injection, /setWorkspacePanelFrame,/u);
   assert.match(workspacePanelApp, /source: "workspace-panel", action: "close"/u);
   assert.match(injection, /message\?\.source === "workspace-panel" && message\.action === "close"/u);
+  const openPanel = injection.slice(injection.indexOf("function openAssetConsolePanel"), injection.indexOf("function openWorkspacePanel"));
+  assert.doesNotMatch(openPanel, /innerHTML\s*=\s*`[^`]*\$\{panelLabel\}/su);
+  assert.match(openPanel, /querySelector\("\[data-codex-panel-title\]"\)\.textContent = panelLabel/u);
 });

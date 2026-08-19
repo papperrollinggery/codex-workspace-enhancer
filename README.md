@@ -1,6 +1,6 @@
 # Codex Workspace Enhancer
 
-**A native visual workspace and optional macOS right-side work panel for OpenAI Codex.** The MCP App remains port-free over stdio; the optional panel adds overview, assets, canvas, tasks, Git changes, and tool entry points in an isolated enhanced Codex window.
+**A native visual workspace and optional macOS right-side work panel for OpenAI Codex.** The MCP App remains port-free over stdio; the optional panel provides Workbench, Assets, and Canvas as three primary modes, with tasks, Git changes, and tools integrated into Workbench.
 
 [简体中文](README.zh-CN.md) · [Architecture](references/native-plugin.md) · [Security](SECURITY.md) · [AI-readable summary](llms.txt)
 
@@ -49,6 +49,10 @@ The first time an unrelated project is opened without a matching host root, the 
 ### Optional macOS right-side panel
 
 The right-side panel is an uninstallable adapter, not an automatic host-owned plugin slot. It does not patch `/Applications/Codex.app` and leaves ordinary Codex windows untouched:
+
+![Codex Workspace Enhancer macOS work panel](assets/ui-review/codex-workspace-panel-dark.png)
+
+_Automated host-layout QA showing the image-first workbench, shared canvas revision, task context, and no-auto-send tool actions._
 
 ```bash
 node assets/runtime/enhancer/scripts/install-macos.mjs --dry-run
@@ -133,7 +137,7 @@ The native plugin is the default and needs no localhost service. `assets/runtime
 - **Transport:** stdio; no TCP listener in the native plugin
 - **Data model:** read-only project images plus user-level revisioned canvas state
 - **Display modes:** inline, host-negotiated fullscreen, and host-negotiated PiP
-- **Optional macOS surface:** a six-module right-side workspace panel in an isolated loopback-CDP Codex window
+- **Optional macOS surface:** a three-mode right-side workspace panel in an isolated loopback-CDP Codex window; task, Git, and tool context lives inside Workbench
 - **Repository:** <https://github.com/papperrollinggery/codex-workspace-enhancer>
 - **License:** MIT, with preserved third-party notices for the legacy adapter and bundled dependencies
 
