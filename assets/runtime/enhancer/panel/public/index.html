@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Codex Workspace Panel</title>
+  <link rel="stylesheet" href="./panel.css">
+</head>
+<body>
+  <div id="panelApp" class="panel-app" aria-busy="true">
+    <header id="panelHeader" class="panel-header">
+      <div><span class="eyebrow">WORKSPACE</span><strong id="panelTitle">当前工作区</strong></div>
+      <span id="connectionState" class="connection-state">连接中</span>
+    </header>
+    <nav id="panelTabs" class="panel-tabs" aria-label="工作台模块"></nav>
+    <main id="panelContent" class="panel-content" tabindex="-1"></main>
+    <footer id="panelStatus" class="panel-status" aria-live="polite">正在初始化工作台</footer>
+  </div>
+  <script type="module" src="./panel.js"></script>
+</body>
+</html>
