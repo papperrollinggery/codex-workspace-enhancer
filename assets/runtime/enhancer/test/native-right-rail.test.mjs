@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const injection = await readFile(path.join(root, "inject", "conversation-preview.user.js"), "utf8");
+const injector = await readFile(path.join(root, "scripts", "injector.mjs"), "utf8");
 const assetConsoleApp = await readFile(path.join(root, "asset-console", "public", "app.js"), "utf8");
 
 test("native injection owns and cleans up a right-side tool rail", () => {
@@ -38,4 +39,29 @@ test("canvas selection crosses only the private embedded parent channel", () => 
   assert.match(assetConsoleApp, /event\.data\.action === "open-view"/u);
   assert.match(assetConsoleApp, /event\.data\.view === "canvas" \? "canvas" : "grid"/u);
   assert.match(assetConsoleApp, /action: "view-changed"/u);
+});
+
+test("injector owns a native workspace panel bridge without starting legacy AssetBrowser", () => {
+  assert.match(injector, /const WORKSPACE_PANEL_BINDING = "codexWorkspacePanel"/u);
+  assert.match(injector, /new NativeWorkspaceClient/u);
+  assert.match(injector, /resolvePanelContext/u);
+  assert.match(injector, /workspacePanelEmbedUrl/u);
+  assert.match(injector, /path\.join\(root, "panel", "public"\)/u);
+  assert.match(injector, /name: "panel\.js"/u);
+  const handler = injector.slice(
+    injector.indexOf("async function handleWorkspacePanelBinding"),
+    injector.indexOf("async function bindWorkspaceIntegrations"),
+  );
+  assert.match(handler, /message\.panel !== "workspace"/u);
+  assert.doesNotMatch(handler, /ensureAssetConsoleServer\(\)/u);
+});
+
+test("right rail exposes the native workspace panel as a first-class macOS surface", () => {
+  assert.match(injection, /label: "工作面板"/u);
+  assert.match(injection, /typeof window\.codexWorkspacePanel !== "function"/u);
+  assert.match(injection, /panel: "workspace"/u);
+  assert.match(injection, /function setWorkspacePanel\(/u);
+  assert.match(injection, /function setWorkspacePanelFrame\(/u);
+  assert.match(injection, /setWorkspacePanel,/u);
+  assert.match(injection, /setWorkspacePanelFrame,/u);
 });

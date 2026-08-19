@@ -1,10 +1,57 @@
 import { lstat, open, readdir, readFile, realpath } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 
 const THREAD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_ENTRIES = 20_000;
 const MAX_DEPTH = 7;
+const execFileAsync = promisify(execFile);
+const GIT_OPTIONS = { timeout: 3_000, maxBuffer: 1024 * 1024, encoding: "utf8" };
+
+async function gitOutput(projectDir, args) {
+  const { stdout } = await execFileAsync("git", args, { cwd: projectDir, ...GIT_OPTIONS });
+  return String(stdout || "");
+}
+
+async function git(projectDir, args) {
+  return (await gitOutput(projectDir, args)).trim();
+}
+
+async function readGitContext(projectDir) {
+  const worktreeRoot = await git(projectDir, ["rev-parse", "--show-toplevel"]).catch(() => "");
+  if (!worktreeRoot) return {
+    worktreeRoot: null,
+    git: { branch: "", dirtyCount: 0, ahead: 0, behind: 0, paths: [] },
+  };
+  const [branch, rawStatus, divergence] = await Promise.all([
+    git(worktreeRoot, ["branch", "--show-current"]).catch(() => ""),
+    gitOutput(worktreeRoot, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]).catch(() => ""),
+    git(worktreeRoot, ["rev-list", "--left-right", "--count", "HEAD...@{upstream}"]).catch(() => "0\t0"),
+  ]);
+  const records = rawStatus.split("\0").filter(Boolean);
+  const paths = [];
+  for (let index = 0; index < records.length && paths.length < 500; index += 1) {
+    const record = records[index];
+    const status = record.slice(0, 2);
+    const file = record.slice(3);
+    if (file) paths.push(file);
+    if (/R|C/u.test(status) && records[index + 1]) index += 1;
+  }
+  const uniquePaths = [...new Set(paths)].sort((left, right) => left.localeCompare(right));
+  const [ahead = 0, behind = 0] = divergence.split(/\s+/u).map((value) => Number.parseInt(value, 10) || 0);
+  return {
+    worktreeRoot: await realpath(worktreeRoot).catch(() => worktreeRoot),
+    git: {
+      branch,
+      dirtyCount: uniquePaths.length,
+      ahead,
+      behind,
+      paths: uniquePaths,
+    },
+  };
+}
 
 function isBroadRoot(value) {
   const root = path.resolve(value);
@@ -87,10 +134,12 @@ export async function resolvePanelContext({ codexHome = path.join(os.homedir(), 
   }
   const projectDir = await validatedProjectDir(metadata?.cwd);
   if (!projectDir) return null;
+  const gitContext = await readGitContext(projectDir);
   return {
     threadId: threadId.toLowerCase(),
     title: await threadTitle(codexHome, threadId),
     projectDir,
     sessionFile: file,
+    ...gitContext,
   };
 }

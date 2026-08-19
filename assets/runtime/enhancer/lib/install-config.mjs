@@ -257,18 +257,64 @@ function createLauncherInfoPlist() {
 function createLauncherScript(plan) {
   return `#!/bin/zsh
 # CodexSidebarEnhancerLauncher:v1
+# Usage: --mode enhanced-window | --mode attach-existing | --mode stop
 set -eu
 
+MODE="enhanced-window"
 PORT=${plan.port}
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --mode) MODE="$2"; shift 2 ;;
+    --port) PORT="$2"; shift 2 ;;
+    *) print -u2 "Unknown option: $1"; exit 64 ;;
+  esac
+done
+
+if [[ ! "\${PORT}" =~ '^[0-9]+$' ]] || (( PORT < 1024 || PORT > 65535 )); then
+  print -u2 "Invalid port"
+  exit 64
+fi
+if [[ "\${MODE}" != "enhanced-window" && "\${MODE}" != "attach-existing" && "\${MODE}" != "stop" ]]; then
+  print -u2 "Invalid mode: \${MODE}"
+  exit 64
+fi
+
+DOMAIN="gui/$(/usr/bin/id -u)"
+SERVICE="\${DOMAIN}/${plan.label}"
+PLIST=${JSON.stringify(plan.plistPath)}
+
+start_injector() {
+  /bin/launchctl bootstrap "\${DOMAIN}" "\${PLIST}" >/dev/null 2>&1 || true
+  /bin/launchctl kickstart -k "\${SERVICE}" >/dev/null 2>&1 || true
+}
+
+# MODE="stop" removes only the owned injector and the isolated enhanced app.
+# 安装器不会自动重启它，也不会退出或终止普通 ChatGPT/Codex 窗口。
+if [[ "\${MODE}" == "stop" ]]; then
+  /bin/launchctl bootout "\${SERVICE}" >/dev/null 2>&1 || true
+  ENHANCED_PIDS=$(/bin/ps -axo pid=,command= | /usr/bin/awk -v marker="--remote-debugging-port=\${PORT}" '
+    index($0, marker) && (index($0, "/Applications/Codex.app/") || index($0, "/Applications/ChatGPT.app/")) { print $1 }
+  ')
+  for ENHANCED_PID in \${(f)ENHANCED_PIDS}; do
+    [[ -n "\${ENHANCED_PID}" && "\${ENHANCED_PID}" != "$$" ]] && /bin/kill -TERM "\${ENHANCED_PID}" 2>/dev/null || true
+  done
+  exit 0
+fi
+
+if [[ "\${MODE}" == "attach-existing" ]]; then
+  if ! /usr/bin/curl -fsS --max-time 1 "http://127.0.0.1:\${PORT}/json" >/dev/null 2>&1; then
+    print -u2 "No Codex CDP endpoint is listening on 127.0.0.1:\${PORT}"
+    exit 69
+  fi
+  start_injector
+  exit 0
+fi
+
 APP_PATH=""
-APP_NAME=""
-for CANDIDATE in "/Applications/ChatGPT.app" "/Applications/Codex.app"; do
+for CANDIDATE in "/Applications/Codex.app" "/Applications/ChatGPT.app"; do
   if [[ -d "\${CANDIDATE}" ]]; then
     APP_PATH="\${CANDIDATE}"
-    APP_NAME="\${CANDIDATE:t:r}"
-    if /usr/bin/pgrep -x "\${APP_NAME}" >/dev/null 2>&1; then
-      break
-    fi
+    break
   fi
 done
 
@@ -278,13 +324,8 @@ if [[ -z "\${APP_PATH}" ]]; then
 fi
 
 if /usr/bin/curl -fsS --max-time 1 "http://127.0.0.1:\${PORT}/json" >/dev/null 2>&1; then
-  /usr/bin/open "\${APP_PATH}"
+  start_injector
   exit 0
-fi
-
-if /usr/bin/pgrep -x "\${APP_NAME}" >/dev/null 2>&1; then
-  /usr/bin/osascript -e 'display alert "Codex Sidebar Enhancer" message "ChatGPT/Codex 当前正在运行，安装器不会自动重启它。请先正常退出应用，再重新打开 Codex Sidebar Enhancer。"'
-  exit 2
 fi
 
 /usr/bin/open -na "\${APP_PATH}" --args \\
@@ -292,5 +333,6 @@ fi
   "--remote-debugging-port=\${PORT}" \\
   "--remote-allow-origins=http://127.0.0.1:\${PORT}" \\
   "--enable-features=LocalNetworkAccessForSubframeNavigationsWarningOnly"
+start_injector
 `;
 }

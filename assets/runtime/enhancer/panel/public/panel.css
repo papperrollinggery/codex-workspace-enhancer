@@ -26,6 +26,10 @@ button { font: inherit; }
 .status-card { display: grid; min-width: 0; gap: 5px; padding: 12px; border: 1px solid color-mix(in srgb, currentColor 11%, transparent); border-radius: 12px; background: var(--color-background-secondary, #1a1c20); }
 .status-card strong, .status-card small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status-card small, .status-label { color: var(--color-text-tertiary, #959aa3); font-size: 11px; }
+.tool-action { min-height: 36px; margin-top: 4px; padding: 7px 10px; border: 1px solid color-mix(in srgb, #2f95ff 32%, transparent); border-radius: 9px; background: color-mix(in srgb, #2f95ff 14%, transparent); color: #8bc8ff; cursor: pointer; }
+.tool-action:hover { background: color-mix(in srgb, #2f95ff 22%, transparent); }
+.tool-action:focus-visible { outline: 3px solid var(--color-ring-primary, #4aa4ff); outline-offset: 1px; }
+.tool-action:disabled { cursor: default; opacity: .48; }
 .panel-status { padding: 9px 14px; border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent); color: var(--color-text-tertiary, #969ba4); font-size: 11px; }
 
 @media (max-width: 480px) {

@@ -19,7 +19,7 @@
   const ASSET_CONSOLE_FRAME_ID = "codex-asset-console-frame";
   const WORKSPACE_TOOL_RAIL_ID = "codex-workspace-tool-rail";
   const WORKSPACE_DOCK_WIDTH_KEY = "codex-workspace-enhancer:right-dock-width-v1";
-  const WORKSPACE_DOCK_MIN_WIDTH = 360;
+  const WORKSPACE_DOCK_MIN_WIDTH = 420;
   const WORKSPACE_DOCK_DEFAULT_WIDTH = 620;
   const SKILL_ORGANIZER_ID = "codex-skill-organizer";
   const SKILL_FAVORITES_KEY = "codex-workspace-enhancer:skill-favorites-v1";
@@ -86,6 +86,12 @@
     label: "资产控制台",
     mode: "embedded",
   };
+  let workspacePanel = {
+    available: false,
+    label: "工作面板",
+    mode: "native-mcp",
+  };
+  let activePanelKind = "asset";
   let assetConsoleReturnFocus = null;
   let assetConsoleView = "grid";
   let assetConsoleDockWidth = WORKSPACE_DOCK_DEFAULT_WIDTH;
@@ -1897,12 +1903,19 @@
   function nativeWorkspaceAnchors() {
     const sidebarScroll = document.querySelector("[data-app-action-sidebar-scroll]");
     const sidebar = sidebarScroll?.closest("aside");
-    const main = Array.from(document.querySelectorAll("main, [role='main']")).find((candidate) => {
+    const officialMain = document.querySelector("[data-app-action-main-content]");
+    const main = [officialMain, ...document.querySelectorAll("main, [role='main']")].find((candidate) => {
+      if (!(candidate instanceof HTMLElement)) return false;
       if (candidate.closest("aside") || candidate.closest(`#${ASSET_CONSOLE_PANEL_ID}`)) return false;
       const rect = candidate.getBoundingClientRect();
       return rect.width >= 320 && rect.height >= 240;
     });
-    return sidebar && main ? { sidebar, sidebarScroll, main } : null;
+    return sidebar && main ? {
+      sidebar,
+      sidebarScroll,
+      main,
+      anchorTier: main === officialMain ? "native-layout" : "sidebar-scroll-main",
+    } : null;
   }
 
   function currentCodexTaskContext() {
@@ -1939,11 +1952,84 @@
     }
   }
 
+  function notifyWorkspacePanel(action) {
+    if (typeof window.codexWorkspacePanel !== "function") return false;
+    try {
+      window.codexWorkspacePanel(JSON.stringify({
+        action,
+        panel: "workspace",
+        source: "right-rail",
+        at: Date.now(),
+        ...(action === "open" ? currentCodexTaskContext() : {}),
+      }));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function notifyActivePanel(action, kind = activePanelKind) {
+    return kind === "workspace" ? notifyWorkspacePanel(action) : notifyAssetConsole(action);
+  }
+
   function currentComposer() {
     return Array.from(document.querySelectorAll('[contenteditable="true"]')).find((node) => {
       const rect = node.getBoundingClientRect();
       return rect.width > 80 && rect.height > 20 && !node.closest(`#${ASSET_CONSOLE_PANEL_ID}`);
     }) || null;
+  }
+
+  function prefillComposer(text) {
+    const composer = currentComposer();
+    if (!composer || typeof text !== "string" || !text.trim()) return false;
+    const content = `${composer.textContent?.trim() ? "\n" : ""}${text.trim()}`;
+    composer.focus();
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(composer);
+    range.collapse(false);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    let inserted = false;
+    try { inserted = document.execCommand("insertText", false, content); } catch {}
+    if (!inserted) {
+      range.insertNode(document.createTextNode(content));
+      range.collapse(false);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+    composer.dispatchEvent(new InputEvent("input", {
+      bubbles: true,
+      inputType: "insertText",
+      data: content,
+    }));
+    return true;
+  }
+
+  function runWorkspaceToolAction(actionId) {
+    const nativeLabels = {
+      plugins: ["插件"],
+      browser: ["浏览器", "Browser", "站点"],
+      review: ["Review", "审查", "拉取请求"],
+      terminal: ["终端", "Terminal"],
+    };
+    for (const label of nativeLabels[actionId] || []) {
+      const button = findNativeShortcutButton(label);
+      if (!button) continue;
+      closeAssetConsolePanel({ focusTarget: "none" });
+      button.click();
+      return { action: "native-control", sent: false };
+    }
+    const prompts = {
+      "visual-workspace": "请打开当前项目的 Visual Workspace，并保持现有工作区上下文。",
+      plugins: "请打开并检查当前任务可用的插件与 Skill。",
+      browser: "请在 Codex 内置浏览器中打开与当前任务相关的页面，先不要提交任何表单。",
+      review: "请审查当前工作区变更，先给出 findings，不要自动提交或推送。",
+      terminal: "请在当前项目终端中执行必要的只读检查，先不要进行破坏性操作。",
+    };
+    return prefillComposer(prompts[actionId] || "")
+      ? { action: "composer-prefilled", sent: false }
+      : { action: "unavailable", sent: false };
   }
 
   function addAssetReferencesToComposer(assetPaths) {
@@ -2052,6 +2138,7 @@
   }
 
   function postAssetConsoleView() {
+    if (document.getElementById(ASSET_CONSOLE_PANEL_ID)?.dataset.panelKind !== "asset") return false;
     const frame = document.getElementById(ASSET_CONSOLE_FRAME_ID);
     if (!frame?.contentWindow) return false;
     try {
@@ -2096,7 +2183,7 @@
     if (messageNode) messageNode.textContent = message || (state === "loading" ? "正在连接本机资产库…" : "资产控制台暂时无法加载");
   }
 
-  function setAssetConsolePanel(value) {
+  function setEmbeddedPanelFrame(value) {
     const source = value && typeof value === "object" ? value : {};
     const panel = document.getElementById(ASSET_CONSOLE_PANEL_ID);
     if (!panel) return;
@@ -2111,11 +2198,11 @@
     if (!frame) {
       frame = document.createElement("iframe");
       frame.id = ASSET_CONSOLE_FRAME_ID;
-      frame.title = "资产控制台";
+      frame.title = panel.dataset.panelKind === "workspace" ? "Codex 工作面板" : "资产控制台";
       frame.setAttribute("allow", "clipboard-read; clipboard-write; autoplay");
       frame.onload = () => {
         setAssetConsolePanelState("ready");
-        postAssetConsoleView();
+        if (panel.dataset.panelKind === "asset") postAssetConsoleView();
       };
       body.appendChild(frame);
     }
@@ -2123,13 +2210,26 @@
     if (frame.src !== source.url) frame.src = source.url;
   }
 
+  function setAssetConsolePanel(value) {
+    const panel = document.getElementById(ASSET_CONSOLE_PANEL_ID);
+    if (!panel || panel.dataset.panelKind !== "asset") return;
+    setEmbeddedPanelFrame(value);
+  }
+
+  function setWorkspacePanelFrame(value) {
+    const panel = document.getElementById(ASSET_CONSOLE_PANEL_ID);
+    if (!panel || panel.dataset.panelKind !== "workspace") return;
+    setEmbeddedPanelFrame(value);
+  }
+
   function closeAssetConsolePanel({ notify = true, focusTarget = "opener" } = {}) {
     const panel = document.getElementById(ASSET_CONSOLE_PANEL_ID);
     if (!panel) return;
+    const panelKind = panel.dataset.panelKind || activePanelKind;
     const returnFocus = assetConsoleReturnFocus;
     panel.remove();
     assetConsoleReturnFocus = null;
-    if (notify) notifyAssetConsole("close");
+    if (notify) notifyActivePanel("close", panelKind);
     syncWorkspaceToolRailState();
     scheduleSync();
     requestAnimationFrame(() => {
@@ -2148,7 +2248,7 @@
     panel.dataset.taskContextKey = nextKey;
     panel.querySelector(`#${ASSET_CONSOLE_FRAME_ID}`)?.remove();
     setAssetConsolePanelState("loading");
-    if (!notifyAssetConsole("open")) {
+    if (!notifyActivePanel("open", panel.dataset.panelKind || activePanelKind)) {
       setAssetConsolePanelState("error", "本机连接未就绪，请稍后重试");
     }
     return true;
@@ -2185,28 +2285,37 @@
     });
   }
 
-  function openAssetConsolePanel({ view = "grid" } = {}) {
-    setAssetConsoleView(view, { notifyFrame: false });
+  function openAssetConsolePanel({ view = "grid", kind = "asset" } = {}) {
+    const normalizedKind = kind === "workspace" ? "workspace" : "asset";
+    if (normalizedKind === "asset") setAssetConsoleView(view, { notifyFrame: false });
     const existing = document.getElementById(ASSET_CONSOLE_PANEL_ID);
     if (existing) {
+      if (existing.dataset.panelKind !== normalizedKind) {
+        closeAssetConsolePanel({ focusTarget: "none" });
+        return openAssetConsolePanel({ view, kind: normalizedKind });
+      }
       positionAssetConsolePanel();
       syncAssetConsoleTaskContext();
-      postAssetConsoleView();
+      if (normalizedKind === "asset") postAssetConsoleView();
       return;
     }
+    activePanelKind = normalizedKind;
+    const isWorkspacePanel = activePanelKind === "workspace";
+    const panelLabel = isWorkspacePanel ? (workspacePanel.label || "工作面板") : "资产控制台";
     assetConsoleReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const panel = document.createElement("section");
     panel.id = ASSET_CONSOLE_PANEL_ID;
     panel.dataset.state = "loading";
+    panel.dataset.panelKind = activePanelKind;
     panel.dataset.view = assetConsoleView;
     panel.dataset.taskContextKey = assetConsoleTaskContextKey();
     panel.setAttribute("role", "complementary");
-    panel.setAttribute("aria-label", "资产控制台");
+    panel.setAttribute("aria-label", panelLabel);
     panel.innerHTML = `
       <div class="codex-asset-console-resizer" role="separator" aria-label="调整资产面板宽度" aria-orientation="vertical" tabindex="0"></div>
       <header class="codex-asset-console-header">
-        <span class="codex-asset-console-title">资产控制台</span>
-        <span class="codex-asset-console-local">本机直连</span>
+        <span class="codex-asset-console-title">${panelLabel}</span>
+        <span class="codex-asset-console-local">${isWorkspacePanel ? "MCP 本机桥接" : "本机直连"}</span>
         <span class="codex-asset-console-spacer"></span>
         <button type="button" class="codex-asset-console-action" data-codex-asset-console-refresh aria-label="刷新资产控制台" title="刷新">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M12.7 5.2A5.4 5.4 0 1 0 13 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M10.2 5.2h2.8V2.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -2218,7 +2327,7 @@
       <div class="codex-asset-console-body">
         <div class="codex-asset-console-state" role="status">
           <span class="codex-asset-console-spinner" aria-hidden="true"></span>
-          <span class="codex-asset-console-message">正在连接本机资产库…</span>
+          <span class="codex-asset-console-message">${isWorkspacePanel ? "正在连接当前 Codex 工作区…" : "正在连接本机资产库…"}</span>
           <button type="button" class="codex-asset-console-retry">重新连接</button>
         </div>
       </div>`;
@@ -2229,21 +2338,25 @@
       if (frame) frame.src = frame.src;
       else {
         setAssetConsolePanelState("loading");
-        notifyAssetConsole("open");
+        notifyActivePanel("open");
       }
     };
     panel.querySelector(".codex-asset-console-retry").onclick = () => {
       setAssetConsolePanelState("loading");
-      notifyAssetConsole("open");
+      notifyActivePanel("open");
     };
     document.body.appendChild(panel);
     updateAssetConsoleDockWidth(assetConsoleDockWidth);
     positionAssetConsolePanel();
     syncWorkspaceToolRailState();
     scheduleSync();
-    if (!notifyAssetConsole("open")) {
+    if (!notifyActivePanel("open")) {
       setAssetConsolePanelState("error", "本机连接未就绪，请稍后重试");
     }
+  }
+
+  function openWorkspacePanel() {
+    openAssetConsolePanel({ kind: "workspace" });
   }
 
   function handleAssetConsoleKeydown(event) {
@@ -2281,6 +2394,9 @@
   }
 
   function workspaceToolIcon(name) {
+    if (name === "workspace") {
+      return `<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="3" y="3.5" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.35"/><path d="M7.5 3.5v13M7.5 8h9.5M10.5 11h3.5M10.5 13.5h2" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg>`;
+    }
     if (name === "canvas") {
       return `<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.5 5.25A1.75 1.75 0 0 1 5.25 3.5h9.5a1.75 1.75 0 0 1 1.75 1.75v9.5a1.75 1.75 0 0 1-1.75 1.75h-9.5a1.75 1.75 0 0 1-1.75-1.75z" stroke="currentColor" stroke-width="1.35"/><path d="m5.9 13.6 2.45-2.7 1.75 1.75 1.45-1.5 2.55 2.45M7.15 7.25h.01" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     }
@@ -2305,9 +2421,12 @@
     const rail = document.getElementById(WORKSPACE_TOOL_RAIL_ID);
     if (!rail) return;
     const panelOpen = Boolean(document.getElementById(ASSET_CONSOLE_PANEL_ID));
+    const panelKind = document.getElementById(ASSET_CONSOLE_PANEL_ID)?.dataset.panelKind || "";
     for (const button of rail.querySelectorAll("[data-codex-workspace-tool]")) {
       if (button.dataset.codexWorkspaceTool === "skills") continue;
-      const active = panelOpen && button.dataset.codexWorkspaceTool === assetConsoleView;
+      const active = panelOpen && (button.dataset.codexWorkspaceTool === "workspace"
+        ? panelKind === "workspace"
+        : panelKind === "asset" && button.dataset.codexWorkspaceTool === assetConsoleView);
       button.setAttribute("aria-pressed", String(active));
     }
   }
@@ -2321,14 +2440,25 @@
     }
     const plugins = findNativeShortcutButton("插件");
     const tools = [];
+    if (workspacePanel.available) {
+      tools.push({
+        name: "workspace",
+        label: "工作面板",
+        action: () => {
+          const panel = document.getElementById(ASSET_CONSOLE_PANEL_ID);
+          if (panel?.dataset.panelKind === "workspace") closeAssetConsolePanel();
+          else openWorkspacePanel();
+        },
+      });
+    }
     if (assetConsole.available) {
       tools.push({
         name: "grid",
         label: "资产库",
         action: () => {
           const panel = document.getElementById(ASSET_CONSOLE_PANEL_ID);
-          if (panel && assetConsoleView === "grid") closeAssetConsolePanel();
-          else openAssetConsolePanel({ view: "grid" });
+          if (panel?.dataset.panelKind === "asset" && assetConsoleView === "grid") closeAssetConsolePanel();
+          else openAssetConsolePanel({ view: "grid", kind: "asset" });
         },
       });
       tools.push({
@@ -2336,8 +2466,8 @@
         label: "空间画布",
         action: () => {
           const panel = document.getElementById(ASSET_CONSOLE_PANEL_ID);
-          if (panel && assetConsoleView === "canvas") closeAssetConsolePanel();
-          else openAssetConsolePanel({ view: "canvas" });
+          if (panel?.dataset.panelKind === "asset" && assetConsoleView === "canvas") closeAssetConsolePanel();
+          else openAssetConsolePanel({ view: "canvas", kind: "asset" });
         },
       });
     }
@@ -2355,6 +2485,7 @@
       rail.id = WORKSPACE_TOOL_RAIL_ID;
       rail.dataset.signature = signature;
       rail.dataset.codexPreviewRuntime = RUNTIME_TOKEN;
+      rail.dataset.codexPanelAnchorTier = anchors.anchorTier;
       rail.setAttribute("role", "toolbar");
       rail.setAttribute("aria-label", "工作区工具");
       rail.setAttribute("aria-orientation", "vertical");
@@ -2383,6 +2514,8 @@
         target.focus();
       });
       document.body.appendChild(rail);
+    } else {
+      rail.dataset.codexPanelAnchorTier = anchors.anchorTier;
     }
     positionAssetConsolePanel();
     syncWorkspaceToolRailState();
@@ -4138,7 +4271,22 @@
       label: typeof source.label === "string" && source.label.trim() ? source.label.trim() : "资产控制台",
       mode: source.mode === "embedded" ? "embedded" : "external",
     };
-    if (!assetConsole.available) closeAssetConsolePanel({ notify: false });
+    if (!assetConsole.available && document.getElementById(ASSET_CONSOLE_PANEL_ID)?.dataset.panelKind === "asset") {
+      closeAssetConsolePanel({ notify: false });
+    }
+    sync();
+  }
+
+  function setWorkspacePanel(value) {
+    const source = value && typeof value === "object" ? value : {};
+    workspacePanel = {
+      available: source.available === true,
+      label: typeof source.label === "string" && source.label.trim() ? source.label.trim() : "工作面板",
+      mode: source.mode === "native-mcp" ? "native-mcp" : "unavailable",
+    };
+    if (!workspacePanel.available && document.getElementById(ASSET_CONSOLE_PANEL_ID)?.dataset.panelKind === "workspace") {
+      closeAssetConsolePanel({ notify: false });
+    }
     sync();
   }
 
@@ -4234,6 +4382,9 @@
     setHomeProjects,
     setAssetConsole,
     setAssetConsolePanel,
+    setWorkspacePanel,
+    setWorkspacePanelFrame,
+    runWorkspaceToolAction,
     getHomeProjectsState,
   };
   if (document.readyState === "loading") {

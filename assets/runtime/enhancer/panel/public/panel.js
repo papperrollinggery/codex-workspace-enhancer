@@ -44,6 +44,34 @@ function card(label, value, detail = "") {
   return item;
 }
 
+function toolCard(tool) {
+  const item = card(tool.label, tool.available ? "可用" : "不可用", tool.action || "");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "tool-action";
+  button.disabled = tool.available !== true;
+  button.textContent = "在 Codex 中打开";
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    elements.status.textContent = `正在打开${tool.label}`;
+    try {
+      const result = await api("./api/tools/action", {
+        method: "POST",
+        body: JSON.stringify({ actionId: tool.id }),
+      });
+      elements.status.textContent = result.action === "composer-prefilled"
+        ? `已把${tool.label}操作写入输入框，尚未发送`
+        : result.action === "native-control" ? `已打开${tool.label}` : `${tool.label}当前不可用`;
+    } catch (error) {
+      elements.status.textContent = error.message || `${tool.label}打开失败`;
+    } finally {
+      button.disabled = tool.available !== true;
+    }
+  });
+  item.append(button);
+  return item;
+}
+
 function section(title) {
   const fragment = document.createDocumentFragment();
   const heading = document.createElement("h2");
@@ -110,7 +138,7 @@ registry.register(statusModule({
 registry.register(statusModule({
   id: "tools", label: "工具", order: 60, route: "./api/tools",
   render(grid, payload) {
-    for (const tool of payload.tools || []) grid.append(card(tool.label, tool.available ? "可用" : "不可用", tool.action || ""));
+    for (const tool of payload.tools || []) grid.append(toolCard(tool));
   },
 }));
 

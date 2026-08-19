@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 const implementation = await import("../lib/panel-context.mjs").catch(() => ({}));
 const temporary = await mkdtemp(path.join(os.tmpdir(), "panel-context-test-"));
@@ -46,4 +50,28 @@ test("rejects a symlink project root from session metadata", async () => {
   await symlink(projectDir, projectLink);
   await writeFile(path.join(codexHome, "sessions", `rollout-${threadId}.jsonl`), `${JSON.stringify({ type: "session_meta", payload: { id: threadId, cwd: projectLink } })}\n`);
   assert.equal(await implementation.resolvePanelContext({ codexHome, threadId }), null);
+});
+
+test("normalizes bounded Git and worktree state for the current task", async () => {
+  const codexHome = path.join(temporary, "git-home");
+  const projectDir = path.join(temporary, "git-project");
+  const threadId = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff";
+  await mkdir(path.join(codexHome, "sessions"), { recursive: true });
+  await mkdir(projectDir);
+  await execFileAsync("git", ["init", "-b", "feature/panel"], { cwd: projectDir });
+  await execFileAsync("git", ["config", "user.name", "Panel Test"], { cwd: projectDir });
+  await execFileAsync("git", ["config", "user.email", "panel@example.invalid"], { cwd: projectDir });
+  await writeFile(path.join(projectDir, "tracked.txt"), "base\n");
+  await execFileAsync("git", ["add", "tracked.txt"], { cwd: projectDir });
+  await execFileAsync("git", ["commit", "-m", "base"], { cwd: projectDir });
+  await writeFile(path.join(projectDir, "tracked.txt"), "changed\n");
+  await writeFile(path.join(projectDir, "new.txt"), "new\n");
+  await writeFile(path.join(codexHome, "sessions", `rollout-${threadId}.jsonl`), `${JSON.stringify({ type: "session_meta", payload: { id: threadId, cwd: projectDir } })}\n`);
+  const context = await implementation.resolvePanelContext({ codexHome, threadId });
+  assert.equal(context.worktreeRoot, await import("node:fs/promises").then(({ realpath }) => realpath(projectDir)));
+  assert.equal(context.git.branch, "feature/panel");
+  assert.equal(context.git.dirtyCount, 2);
+  assert.deepEqual(context.git.paths, ["new.txt", "tracked.txt"]);
+  assert.equal(context.git.ahead, 0);
+  assert.equal(context.git.behind, 0);
 });

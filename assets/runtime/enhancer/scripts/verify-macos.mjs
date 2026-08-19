@@ -5,20 +5,46 @@ import { inspectOwnedInstallation, inspectSupportedApps } from "./install-macos.
 import { access, readFile, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { spawnSync } from "node:child_process";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 export function parseVerifyArgs(argv) {
-  const options = { skipLaunchctl: false, skipPlutil: false, launchctlPath: "/bin/launchctl" };
+  const options = {
+    installed: false,
+    requireStopped: false,
+    skipLaunchctl: false,
+    skipPlutil: false,
+    launchctlPath: "/bin/launchctl",
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === "--skip-launchctl") options.skipLaunchctl = true;
+    if (argument === "--installed") options.installed = true;
+    else if (argument === "--require-stopped") options.requireStopped = true;
+    else if (argument === "--skip-launchctl") options.skipLaunchctl = true;
     else if (argument === "--skip-plutil") options.skipPlutil = true;
     else if (argument === "--launchctl-path") options.launchctlPath = requireValue(argv, ++index, argument);
     else throw new Error(`Unknown option: ${argument}`);
   }
   return options;
+}
+
+async function loopbackPortOpen(port, timeoutMs = 500) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host: "127.0.0.1", port });
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(value);
+    };
+    socket.unref();
+    socket.setTimeout(timeoutMs, () => finish(false));
+    socket.once("connect", () => finish(true));
+    socket.once("error", () => finish(false));
+  });
 }
 
 function requireValue(argv, index, option) {
@@ -89,6 +115,12 @@ export async function verifyMac(options = {}) {
     if (!launchAgentLoaded) issues.push("LaunchAgent is not loaded");
   }
   if (!apps.some((app) => app.installed)) warnings.push("Neither /Applications/ChatGPT.app nor /Applications/Codex.app is installed");
+  let cdpStopped = null;
+  if (options.requireStopped) {
+    const isPortOpen = options.isPortOpen ?? loopbackPortOpen;
+    cdpStopped = !(await isPortOpen(plan.port));
+    if (!cdpStopped) issues.push(`Codex CDP endpoint is still listening on 127.0.0.1:${plan.port}`);
+  }
 
   return {
     ok: issues.length === 0,
@@ -104,6 +136,7 @@ export async function verifyMac(options = {}) {
       applicationBundlesModified: false,
       plistLint: !options.skipPlutil && platform === "darwin",
       launchAgent: !options.skipLaunchctl && platform === "darwin",
+      cdpStopped,
     },
   };
 }

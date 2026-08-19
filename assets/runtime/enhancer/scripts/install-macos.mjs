@@ -230,6 +230,12 @@ async function validateSourceRuntime(sourceDir) {
     path.join(sourceRealPath, "package.json"),
     path.join(sourceRealPath, "scripts", "injector.mjs"),
     path.join(sourceRealPath, "inject", "conversation-preview.user.js"),
+    path.join(sourceRealPath, "panel", "public", "index.html"),
+    path.join(sourceRealPath, "panel", "public", "panel.js"),
+    path.join(sourceRealPath, "panel", "public", "panel.css"),
+    path.join(sourceRealPath, "panel", "public", "module-registry.mjs"),
+    path.join(sourceRealPath, "lib", "workspace-panel-bridge.mjs"),
+    path.join(sourceRealPath, "lib", "workspace-panel-embed.mjs"),
   ];
   for (const target of required) {
     const stat = await lstat(target);

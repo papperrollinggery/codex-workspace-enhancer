@@ -20,7 +20,7 @@ import {
 } from "../scripts/install-macos.mjs";
 import { uninstallMac } from "../scripts/uninstall-macos.mjs";
 import { inspectMac } from "../scripts/inspect-macos.mjs";
-import { verifyMac } from "../scripts/verify-macos.mjs";
+import { parseVerifyArgs, verifyMac } from "../scripts/verify-macos.mjs";
 
 const ENHANCER_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUNDLE_ROOT = "/tmp/codex-enhancer-bundle";
@@ -74,8 +74,25 @@ test("launcher supports ChatGPT and Codex without an automatic restart", () => {
   assert.match(plan.launcherScript, /--remote-debugging-address=127\.0\.0\.1/);
   assert.match(plan.launcherScript, /安装器不会自动重启它/);
   assert.doesNotMatch(plan.launcherScript, /tell application.*to quit/s);
+  assert.match(plan.launcherScript, /--mode enhanced-window/);
+  assert.match(plan.launcherScript, /attach-existing/);
+  assert.match(plan.launcherScript, /MODE="stop"/);
+  assert.doesNotMatch(plan.launcherScript, /killall|pkill/u);
   assert.match(plan.plist, /<key>ProcessType<\/key>\s*<string>Background<\/string>/);
   assert.match(plan.plist, /<key>KeepAlive<\/key>\s*<true\/>/);
+});
+
+test("verifier accepts installed and stopped lifecycle contracts", () => {
+  assert.deepEqual(
+    parseVerifyArgs(["--installed", "--skip-launchctl", "--require-stopped"]),
+    {
+      installed: true,
+      requireStopped: true,
+      skipLaunchctl: true,
+      skipPlutil: false,
+      launchctlPath: "/bin/launchctl",
+    },
+  );
 });
 
 test("argument parser exposes bundle-root and requires an explicit mode", () => {
@@ -136,6 +153,7 @@ test("temporary-home install, verify, and uninstall preserve application bundles
     assert.equal(installMarker, OWNERSHIP_MARKER_CONTENT);
     assert.equal(stateMarker, OWNERSHIP_MARKER_CONTENT);
     assert.deepEqual(validateInstallManifest(JSON.parse(manifestText), plan), []);
+    assert.match(await readFile(path.join(plan.installDir, "panel", "public", "panel.js"), "utf8"), /PanelModuleRegistry/);
 
     const verified = await verifyMac({
       home,
@@ -143,9 +161,12 @@ test("temporary-home install, verify, and uninstall preserve application bundles
       nodePath: process.execPath,
       skipLaunchctl: true,
       skipPlutil: true,
+      requireStopped: true,
+      isPortOpen: async () => false,
     });
     assert.equal(verified.ok, true, verified.issues.join("; "));
     assert.equal(verified.checked.applicationBundlesModified, false);
+    assert.equal(verified.checked.cdpStopped, true);
 
     const dryRun = await uninstallMac({
       dryRun: true,

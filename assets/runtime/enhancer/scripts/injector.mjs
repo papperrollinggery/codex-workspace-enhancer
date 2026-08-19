@@ -16,6 +16,15 @@ import { needsPreviewAttachment } from "../lib/injector-state.mjs";
 import { buildHomeProjectShelf, readTaskboardSnapshot } from "../lib/home-projects.mjs";
 import { assetBrowserRoot, resolvedTimeZone } from "../lib/platform-adapter.mjs";
 import { authenticatedAssetConsoleHeaders, readAssetConsoleApiToken } from "../lib/asset-console-auth.mjs";
+import { discoverInstalledVisualWorkspace, NativeWorkspaceClient } from "../lib/native-workspace-client.mjs";
+import { resolvePanelContext } from "../lib/panel-context.mjs";
+import { WorkspacePanelBridge } from "../lib/workspace-panel-bridge.mjs";
+import {
+  WORKSPACE_PANEL_EMBED_ORIGIN,
+  workspacePanelEmbedPrefix,
+  workspacePanelEmbedUrl,
+  workspacePanelRoute,
+} from "../lib/workspace-panel-embed.mjs";
 import {
   ASSET_CONSOLE_EMBED_ORIGIN,
   assetConsoleEmbedPrefix,
@@ -29,6 +38,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourcePath = path.join(root, "inject", "conversation-preview.user.js");
 const SCRIPT_ID_GLOBAL = "__CODEX_CONVERSATION_PREVIEW_SCRIPT_IDENTIFIER__";
 const ASSET_CONSOLE_BINDING = "codexSidebarOpenAssetConsole";
+const WORKSPACE_PANEL_BINDING = "codexWorkspacePanel";
 const assetConsoleRoot = assetBrowserRoot();
 const assetConsoleServer = assetConsoleRoot ? path.join(assetConsoleRoot, "server.js") : null;
 const assetConsoleTokenPath = assetConsoleRoot ? path.join(assetConsoleRoot, ".api-token") : null;
@@ -43,6 +53,14 @@ const embeddedAssetConsoleFiles = new Map([
   ["/ui-canvas.css", { name: "ui-canvas.css", type: "text/css; charset=utf-8" }],
   ["/canvas-view.mjs", { name: "canvas-view.mjs", type: "text/javascript; charset=utf-8" }],
 ]);
+const workspacePanelRoot = path.join(root, "panel", "public");
+const workspacePanelFiles = new Map([
+  ["/", { name: "index.html", type: "text/html; charset=utf-8" }],
+  ["/index.html", { name: "index.html", type: "text/html; charset=utf-8" }],
+  ["/panel.js", { name: "panel.js", type: "text/javascript; charset=utf-8" }],
+  ["/panel.css", { name: "panel.css", type: "text/css; charset=utf-8" }],
+  ["/module-registry.mjs", { name: "module-registry.mjs", type: "text/javascript; charset=utf-8" }],
+]);
 
 async function embeddedAssetConsoleResponse(route, method) {
   if (method !== "GET") return null;
@@ -56,6 +74,22 @@ async function embeddedAssetConsoleResponse(route, method) {
     headers: { "content-type": file.type, "cache-control": "no-store" },
     body,
   };
+}
+
+async function workspacePanelResponse(route, method, body, bridge) {
+  let pathname;
+  try { pathname = new URL(route, WORKSPACE_PANEL_EMBED_ORIGIN).pathname; } catch { return null; }
+  const file = workspacePanelFiles.get(pathname);
+  if (file) {
+    if (method !== "GET") return null;
+    return {
+      status: 200,
+      headers: { "content-type": file.type, "cache-control": "no-store" },
+      body: await readFile(path.join(workspacePanelRoot, file.name)),
+    };
+  }
+  const response = await bridge.handle({ method, route, body });
+  return { ...response, body: Buffer.from(response.body || "") };
 }
 
 function parseArgs(argv) {
@@ -91,6 +125,11 @@ let assetConsoleProxyQueue = Promise.resolve();
 let assetConsoleStartPromise = null;
 let assetConsoleChild = null;
 let assetConsoleRequestGeneration = 0;
+let workspacePanelProxy = null;
+let workspacePanelProxyQueue = Promise.resolve();
+let workspacePanelRequestGeneration = 0;
+let workspacePanelBridge = null;
+let workspacePluginCandidate = null;
 
 function assetConsoleResponseLimit(route) {
   const pathname = new URL(route, assetConsoleUrl).pathname;
@@ -433,6 +472,217 @@ async function teardownAssetConsoleProxy() {
   });
 }
 
+function queueWorkspacePanelProxyWork(work) {
+  const pending = workspacePanelProxyQueue.then(work, work);
+  workspacePanelProxyQueue = pending.catch(() => {});
+  return pending;
+}
+
+async function failWorkspacePanelRequest(proxy, event, sessionId) {
+  try {
+    await proxy.client.send("Fetch.failRequest", {
+      requestId: event.requestId,
+      errorReason: "BlockedByClient",
+    }, sessionId);
+  } catch {}
+}
+
+async function activateWorkspacePanelSession(proxy, sessionId) {
+  const info = proxy.sessionInfo.get(sessionId);
+  if (!info || info.active || proxy.cancelled) return;
+  info.active = true;
+  proxy.panelSessions.add(sessionId);
+  try {
+    await proxy.client.send("Fetch.enable", {
+      patterns: [{ urlPattern: "*", requestStage: "Request" }],
+    }, sessionId);
+  } catch (error) {
+    info.active = false;
+    proxy.panelSessions.delete(sessionId);
+    throw error;
+  }
+}
+
+async function proxyWorkspacePanelRequest(event, sessionId, proxy) {
+  if (proxy.cancelled) return failWorkspacePanelRequest(proxy, event, sessionId);
+  let url;
+  try { url = new URL(event.request.url); } catch {
+    return failWorkspacePanelRequest(proxy, event, sessionId);
+  }
+  const isPrivateEmbedRequest = url.origin === WORKSPACE_PANEL_EMBED_ORIGIN
+    && url.pathname.startsWith(proxy.embedPrefix);
+
+  if (!sessionId) {
+    if (!isPrivateEmbedRequest || !event.frameId) return failWorkspacePanelRequest(proxy, event, sessionId);
+    if (proxy.allowedFrameId && proxy.allowedFrameId !== event.frameId) {
+      return failWorkspacePanelRequest(proxy, event, sessionId);
+    }
+    proxy.allowedFrameId = event.frameId;
+    for (const [candidateSessionId, info] of proxy.sessionInfo) {
+      if (info.targetId === proxy.allowedFrameId) {
+        try { await activateWorkspacePanelSession(proxy, candidateSessionId); } catch {}
+      }
+    }
+  } else {
+    const info = proxy.sessionInfo.get(sessionId);
+    const frameMatches = Boolean(info && proxy.allowedFrameId
+      && info.targetId === proxy.allowedFrameId
+      && (!event.frameId || event.frameId === proxy.allowedFrameId));
+    if (isPrivateEmbedRequest && !proxy.allowedFrameId && info && event.frameId === info.targetId) {
+      proxy.allowedFrameId = event.frameId;
+    }
+    const confirmedFrame = Boolean(info && proxy.allowedFrameId
+      && info.targetId === proxy.allowedFrameId
+      && (!event.frameId || event.frameId === proxy.allowedFrameId));
+    if (isPrivateEmbedRequest && confirmedFrame) {
+      try { await activateWorkspacePanelSession(proxy, sessionId); } catch {
+        return failWorkspacePanelRequest(proxy, event, sessionId);
+      }
+    } else if (!frameMatches || !proxy.panelSessions.has(sessionId)) {
+      return failWorkspacePanelRequest(proxy, event, sessionId);
+    }
+  }
+
+  const panelSession = Boolean(sessionId && proxy.panelSessions.has(sessionId));
+  const route = workspacePanelRoute(event.request.url, { token: proxy.token, panelSession });
+  if (!route) {
+    if (panelSession) proxy.panelSessions.delete(sessionId);
+    return failWorkspacePanelRequest(proxy, event, sessionId);
+  }
+  try {
+    const response = await workspacePanelResponse(
+      route,
+      event.request.method,
+      event.request.postData || "",
+      proxy.bridge,
+    );
+    if (!response) return failWorkspacePanelRequest(proxy, event, sessionId);
+    await proxy.client.send("Fetch.fulfillRequest", {
+      requestId: event.requestId,
+      responseCode: response.status,
+      responseHeaders: responseHeadersForCdp(response.headers, response.body.length),
+      body: response.body.toString("base64"),
+    }, sessionId);
+  } catch {
+    await failWorkspacePanelRequest(proxy, event, sessionId);
+  }
+}
+
+async function disposeWorkspacePanelProxy(proxy) {
+  if (!proxy || proxy.disposed) return;
+  proxy.cancelled = true;
+  proxy.disposed = true;
+  if (workspacePanelProxy === proxy) workspacePanelProxy = null;
+  if (workspacePanelBridge === proxy.bridge) workspacePanelBridge = null;
+  proxy.removeAttachedListener?.();
+  proxy.removePausedListener?.();
+  try { await proxy.client.send("Fetch.disable"); } catch {}
+  for (const sessionId of proxy.sessions) {
+    try { await proxy.client.send("Fetch.disable", {}, sessionId); } catch {}
+  }
+  proxy.sessions.clear();
+  proxy.panelSessions.clear();
+  proxy.sessionInfo.clear();
+  proxy.allowedFrameId = null;
+  proxy.token = null;
+  try {
+    await proxy.client.send("Target.setAutoAttach", {
+      autoAttach: false,
+      waitForDebuggerOnStart: false,
+      flatten: true,
+    });
+  } catch {}
+  await proxy.bridge.close().catch(() => {});
+}
+
+async function setupWorkspacePanelProxy(generation, bridge) {
+  return queueWorkspacePanelProxyWork(async () => {
+    if (generation !== workspacePanelRequestGeneration || stopped || !client) return null;
+    if (workspacePanelProxy) await disposeWorkspacePanelProxy(workspacePanelProxy);
+    if (generation !== workspacePanelRequestGeneration || stopped || !client) return null;
+
+    const token = randomBytes(24).toString("hex");
+    const proxy = {
+      client,
+      bridge,
+      generation,
+      token,
+      embedPrefix: workspacePanelEmbedPrefix(token),
+      embedUrl: workspacePanelEmbedUrl(token),
+      allowedFrameId: null,
+      sessions: new Set(),
+      panelSessions: new Set(),
+      sessionInfo: new Map(),
+      cancelled: false,
+      disposed: false,
+      removeAttachedListener: null,
+      removePausedListener: null,
+    };
+    workspacePanelProxy = proxy;
+    workspacePanelBridge = bridge;
+    proxy.removeAttachedListener = proxy.client.on("Target.attachedToTarget", async (event) => {
+      const sessionId = event.sessionId;
+      const targetUrl = event.targetInfo?.url || "";
+      const isCandidate = Boolean(sessionId
+        && event.targetInfo?.type === "iframe"
+        && (!targetUrl || targetUrl.startsWith(proxy.embedUrl)));
+      if (!isCandidate || proxy.cancelled) {
+        if (sessionId) {
+          try { await proxy.client.send("Runtime.runIfWaitingForDebugger", {}, sessionId); } catch {}
+        }
+        return;
+      }
+      proxy.sessions.add(sessionId);
+      proxy.sessionInfo.set(sessionId, { targetId: event.targetInfo.targetId, active: false });
+      try {
+        await proxy.client.send("Fetch.enable", {
+          patterns: [{ urlPattern: `${proxy.embedUrl}*`, requestStage: "Request" }],
+        }, sessionId);
+        if (proxy.allowedFrameId === event.targetInfo.targetId) {
+          await activateWorkspacePanelSession(proxy, sessionId);
+        }
+      } catch {}
+      try { await proxy.client.send("Runtime.runIfWaitingForDebugger", {}, sessionId); } catch {}
+    });
+    proxy.removePausedListener = proxy.client.on("Fetch.requestPaused", (event, meta) => {
+      proxyWorkspacePanelRequest(event, meta.sessionId, proxy).catch(() => {});
+    });
+
+    try {
+      await proxy.client.send("Target.setAutoAttach", {
+        autoAttach: true,
+        waitForDebuggerOnStart: true,
+        flatten: true,
+      });
+      if (proxy.cancelled || generation !== workspacePanelRequestGeneration) {
+        await disposeWorkspacePanelProxy(proxy);
+        return null;
+      }
+      await proxy.client.send("Fetch.enable", {
+        patterns: [{ urlPattern: `${proxy.embedUrl}*`, requestStage: "Request" }],
+      });
+      if (proxy.cancelled || generation !== workspacePanelRequestGeneration) {
+        await disposeWorkspacePanelProxy(proxy);
+        return null;
+      }
+      return proxy;
+    } catch (error) {
+      const cancelled = proxy.cancelled || generation !== workspacePanelRequestGeneration;
+      await disposeWorkspacePanelProxy(proxy);
+      if (cancelled) return null;
+      throw error;
+    }
+  });
+}
+
+async function teardownWorkspacePanelProxy() {
+  const proxy = workspacePanelProxy;
+  if (proxy) proxy.cancelled = true;
+  return queueWorkspacePanelProxyWork(async () => {
+    if (proxy) await disposeWorkspacePanelProxy(proxy);
+  });
+}
+
 async function handleAssetConsoleBinding(payload) {
   let message = {};
   try { message = JSON.parse(payload || "{}"); } catch {}
@@ -471,22 +721,103 @@ async function handleAssetConsoleBinding(payload) {
   }
 }
 
-async function bindAssetConsole() {
+async function handleWorkspacePanelBinding(payload) {
+  let message = {};
+  try { message = JSON.parse(payload || "{}"); } catch {}
+  if (message.panel !== "workspace") return;
+  const generation = ++workspacePanelRequestGeneration;
+  if (message.action === "close") {
+    await teardownWorkspacePanelProxy();
+    return;
+  }
+  if (message.action !== "open") return;
+
+  let nativeClient = null;
+  try {
+    await teardownAssetConsoleProxy();
+    await teardownWorkspacePanelProxy();
+    if (generation !== workspacePanelRequestGeneration) return;
+    const context = await resolvePanelContext({ threadId: message.threadId });
+    if (!context) throw new Error("无法从当前 Codex 任务确认项目目录");
+    workspacePluginCandidate ||= await discoverInstalledVisualWorkspace({
+      explicitServerPath: process.env.CODEX_VISUAL_WORKSPACE_SERVER,
+    });
+    nativeClient = new NativeWorkspaceClient(workspacePluginCandidate);
+    const openResult = await nativeClient.openApprovedWorkspace({
+      projectDir: context.projectDir,
+      displayMode: "inline",
+    });
+    if (generation !== workspacePanelRequestGeneration) {
+      await nativeClient.close();
+      return;
+    }
+    const bridge = new WorkspacePanelBridge({
+      context,
+      openResult,
+      nativeClient,
+      version: workspacePluginCandidate.version,
+      actionHandler: (actionId) => client.evaluate(
+        `window.__codexConversationPreviewInjection__?.runWorkspaceToolAction?.(${JSON.stringify(actionId)}) || { action: "unavailable", sent: false }`,
+      ),
+    });
+    nativeClient = null;
+    const proxy = await setupWorkspacePanelProxy(generation, bridge);
+    if (!proxy) {
+      await bridge.close();
+      return;
+    }
+    const embedUrl = new URL(proxy.embedUrl);
+    embedUrl.searchParams.set("embed", "codex");
+    await client.evaluate(`window.__codexConversationPreviewInjection__?.setWorkspacePanelFrame?.(${JSON.stringify({
+      state: "ready",
+      url: embedUrl.href,
+      accessState: openResult.accessState,
+    })})`);
+  } catch (error) {
+    await nativeClient?.close().catch(() => {});
+    if (generation !== workspacePanelRequestGeneration) return;
+    await teardownWorkspacePanelProxy();
+    try {
+      await client.evaluate(`window.__codexConversationPreviewInjection__?.setWorkspacePanelFrame?.(${JSON.stringify({
+        state: "error",
+        message: error?.message || "工作面板加载失败",
+      })})`);
+    } catch {}
+  }
+}
+
+async function bindWorkspaceIntegrations() {
   removeBindingListener?.();
   removeBindingListener = null;
-  const available = Boolean(assetConsoleServer && existsSync(assetConsoleServer));
-  if (available) {
+  const assetAvailable = Boolean(assetConsoleServer && existsSync(assetConsoleServer));
+  try {
+    workspacePluginCandidate = await discoverInstalledVisualWorkspace({
+      explicitServerPath: process.env.CODEX_VISUAL_WORKSPACE_SERVER,
+    });
+  } catch {
+    workspacePluginCandidate = null;
+  }
+  const workspaceAvailable = Boolean(workspacePluginCandidate);
+  if (assetAvailable || workspaceAvailable) {
     await client.send("Runtime.enable");
     try { await client.send("Runtime.removeBinding", { name: ASSET_CONSOLE_BINDING }); } catch {}
-    await client.send("Runtime.addBinding", { name: ASSET_CONSOLE_BINDING });
+    try { await client.send("Runtime.removeBinding", { name: WORKSPACE_PANEL_BINDING }); } catch {}
+    if (assetAvailable) await client.send("Runtime.addBinding", { name: ASSET_CONSOLE_BINDING });
+    if (workspaceAvailable) await client.send("Runtime.addBinding", { name: WORKSPACE_PANEL_BINDING });
     removeBindingListener = client.on("Runtime.bindingCalled", ({ name, payload }) => {
       if (name === ASSET_CONSOLE_BINDING) handleAssetConsoleBinding(payload).catch(() => {});
+      if (name === WORKSPACE_PANEL_BINDING) handleWorkspacePanelBinding(payload).catch(() => {});
     });
   }
   await client.evaluate(`window.__codexConversationPreviewInjection__?.setAssetConsole?.(${JSON.stringify({
-    available,
+    available: assetAvailable,
     label: "资产控制台",
     mode: "embedded",
+  })})`);
+  await client.evaluate(`window.__codexConversationPreviewInjection__?.setWorkspacePanel?.(${JSON.stringify({
+    available: workspaceAvailable,
+    label: "工作面板",
+    mode: "native-mcp",
   })})`);
 }
 
@@ -496,7 +827,9 @@ async function attach() {
 
   if (!client || nextTargetId !== attachedTargetId) {
     assetConsoleRequestGeneration += 1;
+    workspacePanelRequestGeneration += 1;
     await teardownAssetConsoleProxy();
+    await teardownWorkspacePanelProxy();
     client?.close();
     client = await connectMainCodex(options.port);
     removeBindingListener = null;
@@ -513,7 +846,7 @@ async function attach() {
   registeredScriptIdentifier = registered.identifier;
   await client.evaluate(userSource);
   await client.evaluate(`window[${JSON.stringify(SCRIPT_ID_GLOBAL)}] = ${JSON.stringify(registered.identifier)}`);
-  await bindAssetConsole();
+  await bindWorkspaceIntegrations();
   attachedTargetId = nextTargetId;
   process.stdout.write(`Codex conversation preview attached to renderer ${nextTargetId}\n`);
   return true;
@@ -574,7 +907,9 @@ async function stop() {
   stopped = true;
   try { await client?.evaluate("window.__codexConversationPreviewInjection__?.destroy?.()") } catch {}
   assetConsoleRequestGeneration += 1;
+  workspacePanelRequestGeneration += 1;
   await teardownAssetConsoleProxy();
+  await teardownWorkspacePanelProxy();
   removeBindingListener?.();
   removeBindingListener = null;
   client?.close();
@@ -597,7 +932,9 @@ try {
       attachedTargetId = null;
       registeredScriptIdentifier = null;
       assetConsoleRequestGeneration += 1;
+      workspacePanelRequestGeneration += 1;
       await teardownAssetConsoleProxy();
+      await teardownWorkspacePanelProxy();
       client?.close();
       client = null;
       if (!options.watch) throw error;
