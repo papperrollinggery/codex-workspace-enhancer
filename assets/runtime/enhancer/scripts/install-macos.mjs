@@ -229,6 +229,7 @@ async function validateSourceRuntime(sourceDir) {
   const required = [
     path.join(sourceRealPath, "package.json"),
     path.join(sourceRealPath, "scripts", "injector.mjs"),
+    path.join(sourceRealPath, "scripts", "prepare-owned-profile.mjs"),
     path.join(sourceRealPath, "inject", "conversation-preview.user.js"),
     path.join(sourceRealPath, "panel", "public", "index.html"),
     path.join(sourceRealPath, "panel", "public", "panel.js"),

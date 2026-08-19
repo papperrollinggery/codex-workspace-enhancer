@@ -1,6 +1,6 @@
 {
   "format": "codex-workspace-enhancer-macos-v1",
-  "generatedAt": "2026-08-19T13:48:08.597Z",
+  "generatedAt": "2026-08-19T13:53:57.726Z",
   "files": [
     {
       "path": "asset-browser/asset-browser.config.example.json",
@@ -220,8 +220,8 @@
     },
     {
       "path": "enhancer/lib/install-config.mjs",
-      "sha256": "e797196a9b3290030e78181398026f273c87891d2732ab6743a201a51a7f1e98",
-      "size": 12448,
+      "sha256": "b399c3d376c6bcfed1d238bba373574ebabf16b0810a395122c9bd0f8250365f",
+      "size": 12626,
       "executable": false
     },
     {
@@ -358,14 +358,20 @@
     },
     {
       "path": "enhancer/scripts/install-macos.mjs",
-      "sha256": "a280ba08970a3b13d8436dadc915fd2529b6a008331ffda78b1c230b497a315e",
-      "size": 20254,
+      "sha256": "98d647d5f9a45ae8de7b551b0e7cda6a27cc67ed6efa8278d0253dd59154af14",
+      "size": 20325,
       "executable": false
     },
     {
       "path": "enhancer/scripts/install.mjs",
       "sha256": "e84554ba74d00597e4d5ad6b0ac91e6f3cc09a4eee4fc01d4d7ce9a3d114b132",
       "size": 535,
+      "executable": false
+    },
+    {
+      "path": "enhancer/scripts/prepare-owned-profile.mjs",
+      "sha256": "c04f3b02d6395f74a5ea4eae39ea3d39ed81fcb64178a4657cbf1b6c42d246ea",
+      "size": 2070,
       "executable": false
     },
     {
@@ -448,8 +454,8 @@
     },
     {
       "path": "enhancer/test/install-macos.test.mjs",
-      "sha256": "0eebe58834d7797d6cb1cfa7459b9123f19fb5ea80c4aa3c24e93aec7f01cde8",
-      "size": 13828,
+      "sha256": "3d20773e7978f8b84a89dcf87f40f218b1be01caf9a490e5a56204a0133bbe00",
+      "size": 15075,
       "executable": false
     },
     {

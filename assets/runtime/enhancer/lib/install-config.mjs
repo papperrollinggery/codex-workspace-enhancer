@@ -136,6 +136,7 @@ export function createInstallPlan({
   plan.launcherExecutablePath = path.join(plan.launcherContentsDir, "MacOS", PRODUCT_NAME);
   plan.launcherInfoPlistPath = path.join(plan.launcherContentsDir, "Info.plist");
   plan.injectorPath = path.join(plan.installDir, "scripts", "injector.mjs");
+  plan.profileValidatorPath = path.join(plan.installDir, "scripts", "prepare-owned-profile.mjs");
   plan.stdoutPath = path.join(plan.logsDir, "injector.log");
   plan.stderrPath = path.join(plan.logsDir, "injector.error.log");
 
@@ -294,7 +295,9 @@ DOMAIN="gui/$(/usr/bin/id -u)"
 SERVICE="\${DOMAIN}/${plan.label}"
 PLIST=${JSON.stringify(plan.plistPath)}
 OWNED_WINDOW_MARKER=${JSON.stringify(enhancedWindowMarker(plan.label))}
-PROFILE_DIR=${JSON.stringify(path.join(plan.stateDir, "EnhancedProfile"))}
+NODE_PATH=${JSON.stringify(plan.nodePath)}
+PROFILE_VALIDATOR=${JSON.stringify(plan.profileValidatorPath)}
+STATE_DIR=${JSON.stringify(plan.stateDir)}
 
 start_injector() {
   /bin/launchctl bootstrap "\${DOMAIN}" "\${PLIST}" >/dev/null 2>&1 || true
@@ -344,8 +347,7 @@ if /usr/bin/curl -fsS --max-time 1 "http://127.0.0.1:\${PORT}/json" >/dev/null 2
   exit 0
 fi
 
-/bin/mkdir -p "\${PROFILE_DIR}"
-/bin/chmod 700 "\${PROFILE_DIR}"
+PROFILE_DIR=$("\${NODE_PATH}" "\${PROFILE_VALIDATOR}" "\${STATE_DIR}")
 /usr/bin/open -na "\${APP_PATH}" --args \\
   "--user-data-dir=\${PROFILE_DIR}" \\
   "--remote-debugging-address=127.0.0.1" \\

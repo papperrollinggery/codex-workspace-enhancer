@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "enhancerZipSha256": "e2328159f2d3f336c5e27c7a587924f92658ac448635b80968dd0f5d6fd9678c",
+  "enhancerZipSha256": "2ec1e6c46482ac962e240451310efbb52664b30e85dc448574589f765cef7087",
   "files": [
     {
       "path": "asset-browser/asset-browser.config.example.json",
@@ -119,8 +119,8 @@
     },
     {
       "path": "enhancer/lib/install-config.mjs",
-      "sha256": "e797196a9b3290030e78181398026f273c87891d2732ab6743a201a51a7f1e98",
-      "size": 12448
+      "sha256": "b399c3d376c6bcfed1d238bba373574ebabf16b0810a395122c9bd0f8250365f",
+      "size": 12626
     },
     {
       "path": "enhancer/lib/mcp-stdio-client.mjs",

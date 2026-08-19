@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +23,7 @@ import {
 import { uninstallMac } from "../scripts/uninstall-macos.mjs";
 import { inspectMac } from "../scripts/inspect-macos.mjs";
 import { parseVerifyArgs, verifyMac } from "../scripts/verify-macos.mjs";
+import { prepareOwnedProfile } from "../scripts/prepare-owned-profile.mjs";
 
 const ENHANCER_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUNDLE_ROOT = "/tmp/codex-enhancer-bundle";
@@ -92,6 +93,32 @@ test("stop ownership rejects an ordinary attach-existing Codex process", () => {
   assert.equal(isOwnedEnhancedProcessCommand(ordinary), false);
   assert.equal(isOwnedEnhancedProcessCommand(owned), true);
   assert.equal(isOwnedEnhancedProcessCommand(owned, { port: 9333 }), false);
+});
+
+test("enhanced profile rejects a symlink without touching its external target", async () => {
+  await withTempHome(async (home) => {
+    const stateDir = path.join(home, "owned-state");
+    const external = path.join(home, "external-profile");
+    const sentinel = path.join(external, "keep.txt");
+    await mkdir(stateDir);
+    await mkdir(external);
+    await chmod(external, 0o755);
+    await writeFile(sentinel, "keep\n");
+    await symlink(external, path.join(stateDir, "EnhancedProfile"));
+    await assert.rejects(prepareOwnedProfile(stateDir), /real directory|escapes/u);
+    assert.equal((await stat(external)).mode & 0o777, 0o755);
+    assert.equal(await readFile(sentinel, "utf8"), "keep\n");
+  });
+});
+
+test("enhanced profile creates one real private directory inside owned state", async () => {
+  await withTempHome(async (home) => {
+    const stateDir = path.join(home, "owned-state");
+    await mkdir(stateDir);
+    const profileDir = await prepareOwnedProfile(stateDir);
+    assert.equal(profileDir, await realpath(path.join(stateDir, "EnhancedProfile")));
+    assert.equal((await stat(profileDir)).mode & 0o777, 0o700);
+  });
 });
 
 test("verifier accepts installed and stopped lifecycle contracts", () => {
