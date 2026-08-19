@@ -1,0 +1,28 @@
+.DS_Store
+node_modules/
+**/node_modules/
+npm-debug.log*
+playwright-report/
+test-results/
+
+# Local DeepSeek Harness collaboration channel
+.dsh-delegation-history/
+SCOPE.md
+TASK.md
+RESULT.md
+OPINION.md
+ASK.md
+STATUS.json
+
+# Local runtime state, tokens, logs, and temporary files
+.env
+.env.*
+*.key
+*.pem
+*.p12
+credentials*
+.api-token
+*.lock
+*.tmp
+*.log
+coverage/

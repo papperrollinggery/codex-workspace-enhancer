@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Visual Workspace</title>
+  <style>/* __VISUAL_WORKSPACE_CSS__ */</style>
+</head>
+<body>
+  <div id="app" class="app-shell" aria-busy="true">
+    <header class="topbar">
+      <div class="brand-block">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 5h6v6H4zm10 0h6v6h-6zM4 15h6v4H4zm10 0h6v4h-6z"/></svg>
+        </span>
+        <div class="brand-copy">
+          <strong>Visual Workspace</strong>
+          <span id="projectName">正在连接项目…</span>
+        </div>
+      </div>
+      <div class="workspace-status" aria-live="polite">
+        <span id="saveDot" class="status-dot"></span>
+        <span id="saveStatus">正在载入</span>
+      </div>
+      <div class="top-actions">
+        <button id="refreshAssets" class="icon-button" type="button" title="刷新项目图片" aria-label="刷新项目图片">
+          <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>
+        </button>
+        <button id="toggleMode" class="icon-button" type="button" title="切换全屏" aria-label="切换全屏">
+          <svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M8 21H3v-5m13 5h5v-5"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <aside class="tool-rail" aria-label="画布工具">
+      <button class="rail-button active" type="button" data-tool="select" aria-pressed="true" title="选择 V">
+        <svg viewBox="0 0 24 24"><path d="m5 3 13 9-6 1-3 6z"/></svg><span>选择</span>
+      </button>
+      <button id="addNote" class="rail-button" type="button" title="新建便签 N">
+        <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8m-8 4h6"/></svg><span>便签</span>
+      </button>
+      <button id="fitCanvas" class="rail-button" type="button" title="适合全部 0">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5m6 0h5v5M4 15v5h5m6 0h5v-5"/></svg><span>适合</span>
+      </button>
+      <div class="rail-spacer"></div>
+      <button id="toggleLibrary" class="rail-button active" type="button" aria-pressed="true" title="显示/隐藏素材库">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 15l4-4 4 3 3-3 5 4"/></svg><span>素材</span>
+      </button>
+    </aside>
+
+    <main id="canvasViewport" class="canvas-viewport" tabindex="0" aria-label="可平移和缩放的项目图片画布">
+      <div class="canvas-grid" aria-hidden="true"></div>
+      <div id="canvasWorld" class="canvas-world" role="listbox" aria-multiselectable="true"></div>
+      <div id="marquee" class="marquee" hidden></div>
+      <section id="accessGate" class="access-gate" aria-labelledby="accessTitle" hidden>
+        <span class="access-symbol" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14v10H5zM12 14v3"/></svg>
+        </span>
+        <span class="eyebrow">PROJECT ACCESS</span>
+        <h1 id="accessTitle">允许读取这个项目的图片？</h1>
+        <p>Visual Workspace 只会扫描项目内的图片，并把画布布局保存到本机应用数据；不会修改、移动或删除原图。</p>
+        <code id="accessProject">正在确认项目…</code>
+        <button id="approveAccess" type="button" class="primary-button">允许并打开画布</button>
+        <small>关闭画布时会尝试撤销授权；若宿主中断清理，授权会在空闲 2 小时或最长 12 小时后失效。</small>
+      </section>
+      <div id="emptyState" class="empty-state">
+        <span class="empty-symbol" aria-hidden="true">⌘</span>
+        <h1>把图片放进思考空间</h1>
+        <p>从下方素材库双击图片，或先创建一张便签。拖动空白处平移，⌘滚轮缩放。</p>
+        <button id="emptyAddNote" type="button" class="primary-button">创建第一张便签</button>
+      </div>
+      <div class="zoom-hud" aria-label="画布缩放控制">
+        <button id="zoomOut" type="button" aria-label="缩小">−</button>
+        <output id="zoomValue">100%</output>
+        <button id="zoomIn" type="button" aria-label="放大">＋</button>
+      </div>
+    </main>
+
+    <aside id="inspector" class="inspector" aria-label="所选内容检查器" hidden>
+      <header>
+        <div><span class="eyebrow">INSPECTOR</span><h2 id="inspectorTitle">所选内容</h2></div>
+        <button id="closeInspector" class="icon-button compact" type="button" aria-label="关闭检查器">×</button>
+      </header>
+      <div id="inspectorBody" class="inspector-body"></div>
+      <footer>
+        <button id="sendSelection" class="primary-button" type="button">加入对话上下文</button>
+        <button id="removeSelection" class="danger-button" type="button">移出画布</button>
+      </footer>
+    </aside>
+
+    <section id="assetLibrary" class="asset-library" aria-label="项目图片库">
+      <header class="library-header">
+        <div>
+          <span class="eyebrow">PROJECT IMAGES</span>
+          <strong><span id="assetCount">0</span> 张可用图片</strong>
+        </div>
+        <label class="search-field">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg>
+          <input id="assetSearch" type="search" placeholder="搜索名称或文件夹" autocomplete="off">
+        </label>
+      </header>
+      <div id="assetStrip" class="asset-strip" role="list" aria-label="项目图片"></div>
+      <div id="libraryEmpty" class="library-empty" hidden>当前项目没有可预览的图片</div>
+    </section>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </div>
+  <script>/* __VISUAL_WORKSPACE_JS__ */</script>
+</body>
+</html>

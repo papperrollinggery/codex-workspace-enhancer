@@ -1,0 +1,30 @@
+# Codex Workspace Enhancer
+
+> Codex Workspace Enhancer is a native, port-free OpenAI Codex plugin and MCP App for arranging approved project images and creative notes on an infinite canvas inside the current conversation.
+
+Canonical repository: https://github.com/papperrollinggery/codex-workspace-enhancer
+
+The preferred native plugin uses an stdio MCP server and a sandboxed `ui://` view. It scans project images read-only after exact-path approval, stores revisioned canvas state in user application data, and attaches selected paths as structured conversation context without automatically sending a message. Fullscreen is requested but always decided by the Codex host.
+
+## Documentation
+
+- [README](https://github.com/papperrollinggery/codex-workspace-enhancer/blob/main/README.md): Features, installation, limits, validation, and canonical facts.
+- [Chinese README](https://github.com/papperrollinggery/codex-workspace-enhancer/blob/main/README.zh-CN.md): Simplified Chinese overview and usage.
+- [Native plugin architecture](https://github.com/papperrollinggery/codex-workspace-enhancer/blob/main/references/native-plugin.md): Protocol, host, storage, and security boundaries.
+- [Security policy](https://github.com/papperrollinggery/codex-workspace-enhancer/blob/main/SECURITY.md): Trust model and private vulnerability reporting.
+- [Acceptance checklist](https://github.com/papperrollinggery/codex-workspace-enhancer/blob/main/references/acceptance-checklist.md): Required behavior and verification layers.
+
+## Source
+
+- [Plugin manifest](https://github.com/papperrollinggery/codex-workspace-enhancer/blob/main/plugin/codex-workspace-enhancer/.codex-plugin/plugin.json): Codex-facing metadata.
+- [MCP server](https://github.com/papperrollinggery/codex-workspace-enhancer/blob/main/plugin/codex-workspace-enhancer/mcp/server.mjs): Tools, authorization, display receipts, and session capabilities.
+- [Workspace storage](https://github.com/papperrollinggery/codex-workspace-enhancer/blob/main/plugin/codex-workspace-enhancer/mcp/lib/workspace-store.mjs): Bounded scan, path validation, preview, and revisioned canvas state.
+- [Visual workspace](https://github.com/papperrollinggery/codex-workspace-enhancer/tree/main/plugin/codex-workspace-enhancer/widget): Native canvas UI.
+
+## Important limitations
+
+- The host may keep the app inline even when fullscreen is requested.
+- Display receipts are bounded app diagnostics, not host-signed attestations.
+- The Codex host snapshot tested on 2026-08-18 exposed no plugin tool for programmatically closing fullscreen; this capability is version-specific and must be rechecked after host updates.
+- Legacy adapters under `assets/runtime/` use separate CDP and loopback-service boundaries and are not required by the native plugin.
+- `llms.txt` is a proposed community format; its presence is not evidence of search ranking or universal AI crawler support.

@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If this software supports your work, cite the repository and version used."
+title: "Codex Workspace Enhancer"
+type: software
+authors:
+  - name: "papperrollinggery"
+version: 0.2.0
+date-released: 2026-08-19
+repository-code: "https://github.com/papperrollinggery/codex-workspace-enhancer"
+url: "https://github.com/papperrollinggery/codex-workspace-enhancer"
+license: MIT
+keywords:
+  - OpenAI Codex
+  - Codex plugin
+  - Model Context Protocol
+  - MCP Apps
+  - visual workspace
+  - infinite canvas

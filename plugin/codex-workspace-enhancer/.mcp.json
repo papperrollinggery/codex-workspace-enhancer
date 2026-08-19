@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "workspace_visual_canvas": {
+      "title": "Visual Workspace",
+      "description": "Render a native, port-free Codex asset canvas for the active project.",
+      "command": "node",
+      "args": ["./dist/server.mjs"],
+      "cwd": "."
+    }
+  }
+}

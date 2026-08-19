@@ -1,0 +1,20 @@
+{
+  "name": "codex-workspace-enhancer",
+  "interface": {
+    "displayName": "Codex Workspace Enhancer"
+  },
+  "plugins": [
+    {
+      "name": "codex-workspace-enhancer",
+      "source": {
+        "source": "local",
+        "path": "./plugin/codex-workspace-enhancer"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

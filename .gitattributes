@@ -1,0 +1,9 @@
+# Preserve generated and third-party payloads byte-for-byte. Their whitespace is
+# covered by bundle hashes or embedded inside JavaScript template strings.
+assets/runtime/** whitespace=-trailing-space
+assets/onepager.svg whitespace=-trailing-space
+plugin/codex-workspace-enhancer/dist/server.mjs whitespace=-trailing-space
+
+# Keep platform scripts on their native line endings.
+*.ps1 text eol=crlf
+*.sh text eol=lf

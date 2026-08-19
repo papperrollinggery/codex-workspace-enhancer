@@ -1,0 +1,45 @@
+{
+  "name": "codex-workspace-enhancer",
+  "version": "0.2.0",
+  "private": true,
+  "description": "A native, port-free Codex MCP App for arranging project images and creative notes on an infinite canvas.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/papperrollinggery/codex-workspace-enhancer.git",
+    "directory": "plugin/codex-workspace-enhancer"
+  },
+  "homepage": "https://github.com/papperrollinggery/codex-workspace-enhancer#readme",
+  "bugs": "https://github.com/papperrollinggery/codex-workspace-enhancer/issues",
+  "keywords": [
+    "codex",
+    "codex-plugin",
+    "mcp",
+    "mcp-apps",
+    "visual-workspace",
+    "infinite-canvas",
+    "creative-tools"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "scripts": {
+    "check": "node --check ./mcp/server.mjs && node --check ./mcp/lib/widget-resource.mjs && node --check ./mcp/lib/workspace-store.mjs && node --check ./widget/app.js && node --check ./scripts/start-mcp.mjs && node --check ./scripts/build-release.mjs && node --check ./scripts/probe-mcp.mjs && node --check ./scripts/verify-release.mjs && node --check ./scripts/verify-widget.mjs",
+    "test": "node --test ./test/*.test.mjs",
+    "build": "node ./scripts/build-release.mjs",
+    "probe:mcp": "node ./scripts/probe-mcp.mjs",
+    "verify:release": "node ./scripts/verify-release.mjs",
+    "verify:widget": "node ./scripts/verify-widget.mjs",
+    "quality": "npm run check && npm test && npm run probe:mcp && npm run build && npm run verify:release && npm run verify:widget"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.5",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.62.1"
+  }
+}

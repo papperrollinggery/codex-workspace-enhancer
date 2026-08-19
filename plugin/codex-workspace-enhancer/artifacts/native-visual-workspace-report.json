@@ -1,0 +1,142 @@
+{
+  "reports": [
+    {
+      "colorScheme": "light",
+      "nodes": 3,
+      "assetCards": 4,
+      "inspectorVisible": true,
+      "smallControls": [],
+      "overflowX": 0,
+      "overflowY": 0,
+      "xss": 0,
+      "injectedImages": 0,
+      "focusRing": "rgba(91, 115, 232, 0.13) 0px 0px 0px 3px",
+      "bodyWidth": 1440,
+      "inspectorZoomOverlap": false,
+      "maxReadActive": 3,
+      "errors": [],
+      "interaction": {
+        "resize": true,
+        "zoom": true,
+        "selectionPersistence": true,
+        "contextHandoffWithoutSend": true,
+        "panRace": true,
+        "teardownFlush": true,
+        "teardownRejectsUnsaved": false,
+        "conflictStops": false
+      }
+    },
+    {
+      "colorScheme": "dark",
+      "nodes": 3,
+      "assetCards": 4,
+      "inspectorVisible": true,
+      "smallControls": [],
+      "overflowX": 0,
+      "overflowY": 0,
+      "xss": 0,
+      "injectedImages": 0,
+      "focusRing": "rgba(135, 156, 255, 0.14) 0px 0px 0px 3px",
+      "bodyWidth": 1440,
+      "inspectorZoomOverlap": false,
+      "maxReadActive": 3,
+      "errors": [],
+      "interaction": {
+        "resize": true,
+        "zoom": true,
+        "selectionPersistence": true,
+        "contextHandoffWithoutSend": true,
+        "panRace": true,
+        "teardownFlush": false,
+        "teardownRejectsUnsaved": true,
+        "conflictStops": true
+      }
+    }
+  ],
+  "reducedReport": {
+    "animationDuration": "1e-06s"
+  },
+  "inlineReport": {
+    "overflowX": 0,
+    "overflowY": 0,
+    "inspectorPosition": "absolute",
+    "inspectorVisible": true,
+    "hydratedCanvasAssets": 2,
+    "selectedAssetHydrated": true,
+    "hydratedAssetCards": 4,
+    "zoomVisible": false,
+    "inspectorZoomOverlap": false
+  },
+  "consentReport": {
+    "beforeApproval": {
+      "projectPath": "/Users/qa/creative-project",
+      "displayMode": "inline",
+      "toast": "当前 Codex 宿主不提供全屏模式",
+      "calls": [
+        {
+          "name": "report_visual_workspace_display_state",
+          "args": {
+            "displayReceiptId": "ccccccccccccccccccccccccccccccccccccccccccc",
+            "requestedMode": "fullscreen",
+            "actualMode": "inline",
+            "availableModes": [
+              "inline"
+            ],
+            "outcome": "unsupported"
+          }
+        }
+      ]
+    },
+    "afterApproval": {
+      "calls": [
+        {
+          "name": "report_visual_workspace_display_state",
+          "args": {
+            "displayReceiptId": "ccccccccccccccccccccccccccccccccccccccccccc",
+            "requestedMode": "fullscreen",
+            "actualMode": "inline",
+            "availableModes": [
+              "inline"
+            ],
+            "outcome": "unsupported"
+          }
+        },
+        {
+          "name": "approve_visual_workspace_access",
+          "args": {
+            "accessRequestId": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          }
+        },
+        {
+          "name": "get_visual_workspace",
+          "args": {
+            "workspaceId": "0123456789abcdef01234567",
+            "accessToken": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ],
+      "gateHidden": true,
+      "projectName": "creative-project · 原生画布"
+    },
+    "errors": []
+  },
+  "lazyReport": {
+    "nodeCount": 83,
+    "offscreenReads": 0,
+    "maxReadActive": 3
+  },
+  "hostReport": {
+    "initialized": true,
+    "displayModeRequested": "inline",
+    "toolCalls": [
+      "report_visual_workspace_display_state",
+      "get_visual_workspace",
+      "read_visual_workspace_asset",
+      "read_visual_workspace_asset",
+      "revoke_visual_workspace_access"
+    ],
+    "displayModeApplied": "inline",
+    "bridgeInstalled": true,
+    "teardownResult": {}
+  }
+}

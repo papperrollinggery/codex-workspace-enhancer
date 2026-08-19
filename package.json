@@ -1,0 +1,19 @@
+{
+  "name": "codex-workspace-enhancer",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Native Codex visual workspace with a port-free MCP App and safe local image canvas.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": "https://github.com/papperrollinggery/codex-workspace-enhancer",
+  "scripts": {
+    "setup": "npm --prefix plugin/codex-workspace-enhancer ci && npx --prefix plugin/codex-workspace-enhancer playwright install chromium",
+    "quality:native": "npm --prefix plugin/codex-workspace-enhancer run quality",
+    "test:legacy": "node --test ./test/*.test.mjs && npm --prefix assets/runtime/enhancer test && npm --prefix assets/runtime/asset-browser test",
+    "verify:bundle": "node ./scripts/verify-macos.mjs",
+    "quality": "npm run quality:native && npm run test:legacy && npm run verify:bundle"
+  }
+}

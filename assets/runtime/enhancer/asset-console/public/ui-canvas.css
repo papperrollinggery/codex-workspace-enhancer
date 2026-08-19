@@ -1,0 +1,387 @@
+.asset-view-switcher {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--control);
+  box-shadow: var(--inset-glass);
+}
+
+.asset-view-switcher button {
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  font-size: var(--fs-label);
+}
+
+.asset-view-switcher button.active {
+  background: var(--content-subtle);
+  color: var(--text);
+  box-shadow: var(--shadow-xs);
+}
+
+body.canvas-active .main {
+  overflow: hidden;
+}
+
+body.canvas-active .batch-bar,
+body.canvas-active .codex-attach-result {
+  display: none !important;
+}
+
+body.canvas-active #embeddedFilterMenu,
+body.canvas-active #sortSelect,
+body.canvas-active #newFolderButton,
+body.canvas-active #organizeProjectButton,
+body.canvas-active #selectionModeButton {
+  display: none !important;
+}
+
+body.canvas-active.has-selection {
+  grid-template-columns: 248px minmax(0, 1fr) 0;
+}
+
+body.codex-embedded.canvas-active.has-selection {
+  grid-template-columns: minmax(0, 1fr) 0;
+}
+
+.canvas-workspace {
+  position: relative;
+  display: grid;
+  height: calc(100vh - 76px);
+  min-height: 420px;
+  grid-template-rows: 58px minmax(0, 1fr) 34px;
+  overflow: hidden;
+  background: var(--canvas);
+  isolation: isolate;
+}
+
+body:has(.codex-task-bar:not([hidden])) .canvas-workspace {
+  height: calc(100vh - 152px);
+}
+
+.canvas-toolbar {
+  position: relative;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--chrome-strong);
+  box-shadow: var(--inset-glass), var(--shadow-xs);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+
+.canvas-toolbar-title,
+.canvas-toolbar-actions {
+  display: flex;
+  align-items: center;
+}
+
+.canvas-toolbar-title {
+  min-width: 170px;
+  gap: 9px;
+}
+
+.canvas-toolbar-title > div {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.canvas-toolbar-title strong {
+  overflow: hidden;
+  font-size: var(--fs-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas-toolbar-title small {
+  color: var(--muted);
+  font-size: var(--fs-caption);
+}
+
+.canvas-mode-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.canvas-workspace[aria-busy="true"] .canvas-mode-dot {
+  animation: canvas-pulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes canvas-pulse {
+  to { opacity: 0.38; transform: scale(0.72); }
+}
+
+.canvas-toolbar-actions {
+  min-width: 0;
+  gap: 4px;
+}
+
+.canvas-toolbar-actions button {
+  min-height: 40px;
+  padding: 0 10px;
+  color: var(--soft);
+  font-size: var(--fs-label);
+  white-space: nowrap;
+}
+
+.canvas-toolbar-actions #canvasAddSelected {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.canvas-toolbar-actions #canvasZoomIn,
+.canvas-toolbar-actions #canvasZoomOut {
+  width: 40px;
+  padding: 0;
+  font-size: 18px;
+}
+
+.canvas-toolbar-actions output {
+  width: 52px;
+  color: var(--muted);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.canvas-toolbar-divider {
+  width: 1px;
+  height: 22px;
+  margin: 0 4px;
+  background: var(--line);
+}
+
+.canvas-viewport {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  outline: none;
+  cursor: grab;
+  touch-action: none;
+  background-color: var(--canvas-raised);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--line) 62%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--line) 62%, transparent) 1px, transparent 1px),
+    radial-gradient(circle at 50% 0%, var(--accent-soft), transparent 42%);
+  background-position: -1px -1px;
+  background-size: 28px 28px, 28px 28px, 100% 100%;
+}
+
+.canvas-viewport.is-panning {
+  cursor: grabbing;
+}
+
+.canvas-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.canvas-node {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  grid-template-rows: 34px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--content);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    filter var(--duration-fast) var(--ease-standard);
+  user-select: none;
+  will-change: transform;
+}
+
+.canvas-node:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.canvas-node.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-sm);
+}
+
+.canvas-node-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 0 9px;
+  border-bottom: 1px solid var(--line);
+  background: var(--content-subtle);
+  cursor: move;
+}
+
+.canvas-node-bar strong {
+  overflow: hidden;
+  font-size: var(--fs-caption);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas-node-drag {
+  flex: 0 0 auto;
+  color: var(--faint);
+  font-size: 14px;
+  letter-spacing: -0.2em;
+}
+
+.canvas-node-asset img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--canvas);
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.canvas-node-note {
+  border-color: color-mix(in srgb, var(--warning) 38%, var(--line));
+  background: color-mix(in srgb, var(--warning) 8%, var(--content));
+}
+
+.canvas-note-editor {
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  padding: 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  line-height: 1.55;
+  user-select: text;
+}
+
+.canvas-note-editor:focus {
+  box-shadow: none;
+}
+
+.canvas-marquee {
+  position: absolute;
+  z-index: 20;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+
+.canvas-empty {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: min(420px, calc(100% - 48px));
+  justify-items: center;
+  gap: 7px;
+  padding: 28px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-xl);
+  background: var(--content);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.canvas-empty > span {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 25px;
+}
+
+.canvas-empty h3,
+.canvas-empty p {
+  margin: 0;
+}
+
+.canvas-empty h3 {
+  font-size: var(--fs-title);
+}
+
+.canvas-empty p {
+  max-width: 340px;
+  color: var(--muted);
+  font-size: var(--fs-label);
+}
+
+.canvas-statusbar {
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 14px;
+  border-top: 1px solid var(--line);
+  background: var(--content);
+  color: var(--muted);
+  font-size: var(--fs-caption);
+  white-space: nowrap;
+}
+
+@media (max-width: 1260px) {
+  .canvas-toolbar-title {
+    display: none;
+  }
+
+  .canvas-toolbar-actions {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .canvas-statusbar span:last-child {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas-workspace[aria-busy="true"] .canvas-mode-dot {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .canvas-toolbar {
+    background: var(--chrome-solid);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .canvas-toolbar {
+    background: var(--chrome-solid);
+  }
+}

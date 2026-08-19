@@ -1,0 +1,35 @@
+{
+  "reports": [
+    {
+      "colorScheme": "light",
+      "nodes": 5,
+      "assetCards": 4,
+      "inspectorVisible": true,
+      "smallControls": [],
+      "overflowX": 0,
+      "overflowY": 0,
+      "xss": 0,
+      "injectedImages": 0,
+      "focusRing": "rgba(91, 115, 232, 0.13) 0px 0px 0px 3px",
+      "bodyWidth": 1440,
+      "errors": []
+    },
+    {
+      "colorScheme": "dark",
+      "nodes": 3,
+      "assetCards": 4,
+      "inspectorVisible": true,
+      "smallControls": [],
+      "overflowX": 0,
+      "overflowY": 0,
+      "xss": 0,
+      "injectedImages": 0,
+      "focusRing": "rgba(135, 156, 255, 0.14) 0px 0px 0px 3px",
+      "bodyWidth": 1440,
+      "errors": []
+    }
+  ],
+  "reducedReport": {
+    "animationDuration": "1e-06s"
+  }
+}

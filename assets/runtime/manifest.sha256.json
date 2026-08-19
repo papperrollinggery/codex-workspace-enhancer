@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "enhancerZipSha256": "f647689599bd1edeebf6a9f5b25df0c3995df4b5a523a9c700215247e285387e",
+  "files": [
+    {
+      "path": "enhancer/LICENSE",
+      "sha256": "eb15824a5cc78ffd3853b3e56ace67d989d4c7958028ebf52c3c5f956451a8ad",
+      "size": 1088
+    },
+    {
+      "path": "enhancer/README-Windows.txt",
+      "sha256": "98016a04a1aaa5e7f959b66a9e08de61a8cafbc3e59335170e2b81d3e7583669",
+      "size": 4569
+    },
+    {
+      "path": "enhancer/README.md",
+      "sha256": "7b073f22a38f2fa581ee4e750a2c2f3dd2f7d9c1ec61cc7ef279bad00fb9a869",
+      "size": 6372
+    },
+    {
+      "path": "enhancer/VERIFICATION.txt",
+      "sha256": "3439952b99942d22f4e1b60e266c59db003670bb7e9afa454a8f161c9dadb955",
+      "size": 5041
+    },
+    {
+      "path": "enhancer/asset-console/public/app.js",
+      "sha256": "a84b07410ec61eab1d1a7a77ecd28d772671f67021f16d761489b33d31c774e4",
+      "size": 213206
+    },
+    {
+      "path": "enhancer/asset-console/public/index.html",
+      "sha256": "19cbe03325200345898c04b13179fd1c218a1250bfd3eebdbdffafbd6cd2667f",
+      "size": 42335
+    },
+    {
+      "path": "enhancer/asset-console/public/ui-v3.css",
+      "sha256": "077483ce03cf350cf71494914b320112374648ad002fdd77b5657e58566e2621",
+      "size": 64144
+    },
+    {
+      "path": "enhancer/inject/conversation-preview.user.js",
+      "sha256": "85dbb24aca07ce651ce05702efb19c9e9ab2a51d9727ca119009047513f17faf",
+      "size": 170787
+    },
+    {
+      "path": "enhancer/install-windows.ps1",
+      "sha256": "077bb2af0c2d3bcdfbd4fd4e738f5f16a8f020c57f8cb1dae6be406e8dc9e146",
+      "size": 12188
+    },
+    {
+      "path": "enhancer/lib/asset-console-embed.mjs",
+      "sha256": "c67a7ae872797dd1c79bc6c0b599b368140ff97b1a1f06386df021bfdbaf30ec",
+      "size": 2180
+    },
+    {
+      "path": "enhancer/lib/card-view.mjs",
+      "sha256": "1673f052792f837e32ec8b4001fca5890f25328188a2f1d2425fceb119165862",
+      "size": 9978
+    },
+    {
+      "path": "enhancer/lib/home-projects.mjs",
+      "sha256": "e46ec9c46d3404c5efe14e9718a8804e02894f5232298f5a9a42af201a5a4e06",
+      "size": 8660
+    },
+    {
+      "path": "enhancer/lib/injector-state.mjs",
+      "sha256": "486538c7dd84881e4d64031fe9ea5e0623dcfbc0e0bd408886a46f0715d44d66",
+      "size": 337
+    },
+    {
+      "path": "enhancer/lib/install-config.mjs",
+      "sha256": "a789dc4efca9e61853ed53dde223b482202160975704b1e557918c8e281dcb4d",
+      "size": 4542
+    },
+    {
+      "path": "enhancer/lib/preview-data.mjs",
+      "sha256": "c6e7a7bebade5b29f326ddaab7d0d6a9d184be536eb368c7321db065c91a6e74",
+      "size": 14421
+    },
+    {
+      "path": "enhancer/lib/usage-data.mjs",
+      "sha256": "22087ed938be6f55125011606bf77046c6287f868c022ff7b356ea2ce83e4800",
+      "size": 3927
+    },
+    {
+      "path": "enhancer/package.json",
+      "sha256": "ed4514ad8991a8840e583af0588cb3929070cf2454010914b395b3e607d661c0",
+      "size": 850
+    },
+    {
+      "path": "enhancer/scripts/cdp-client.mjs",
+      "sha256": "f2625ec777dd1043afd876c9668d150997d3c693b5ce15f80adad9436e606486",
+      "size": 5715
+    },
+    {
+      "path": "enhancer/scripts/injector.mjs",
+      "sha256": "ef9e5265e20fe47c2060228387edd487810ba31c9ed6bfe93ce5ccf60ae3323b",
+      "size": 21336
+    },
+    {
+      "path": "enhancer/scripts/inspect-hover.mjs",
+      "sha256": "a990dd3ed77314efbcd59378c7ed92dd924ec31a250bf7f1df9b49d5966c31ad",
+      "size": 3902
+    },
+    {
+      "path": "enhancer/scripts/inspect-sidebar.mjs",
+      "sha256": "23483358d9d8ddffae01b3a8fa2cf77370be4ddc1c0cfaf49c7f8b70e66cecd7",
+      "size": 1419
+    },
+    {
+      "path": "enhancer/scripts/install.mjs",
+      "sha256": "79ad6ffcc4ec35cf9136a6009fddf76f7c752c2cf499cd3620033fef53b4be38",
+      "size": 3106
+    },
+    {
+      "path": "enhancer/scripts/remove-injection.mjs",
+      "sha256": "5de7962ff56a3d8fb74a7f7f755b3f72298b80e4945a56655ec97e137ba27acc",
+      "size": 1321
+    },
+    {
+      "path": "enhancer/scripts/verify-card-view.mjs",
+      "sha256": "9de0342392305ad5195ed93fffa92b56c84ddbc2e14715ea5ec290c0e0b9ee9f",
+      "size": 10208
+    },
+    {
+      "path": "enhancer/scripts/verify-folder-switcher.mjs",
+      "sha256": "823e92c48b25cd26d9cec85b7fed64a8141aba846db81ba14e217c4aefa111c6",
+      "size": 14097
+    },
+    {
+      "path": "enhancer/scripts/verify-home-projects.mjs",
+      "sha256": "f72f237cb2fcb36bcd9798cfca905e07f5f063daded74a4de07969c0cf3d0f89",
+      "size": 6408
+    },
+    {
+      "path": "enhancer/scripts/verify-reload-persistence.mjs",
+      "sha256": "32cc91c76acfa5277dca2a02d31b53e1d13f7033a0fbc2deaba0bdc0c9854e10",
+      "size": 3989
+    },
+    {
+      "path": "enhancer/scripts/verify-section-tabs.mjs",
+      "sha256": "0cd86feb37e5d99a0968cd52a8808f684f92a4b74d69290ec774a2fc2e5c1be9",
+      "size": 7849
+    },
+    {
+      "path": "enhancer/scripts/verify-shortcut-grid.mjs",
+      "sha256": "e4bdf56cfe504d3f911d9e9a2014e4a5d9f433ef9095bef1dbfc3977d84dc8e6",
+      "size": 7138
+    },
+    {
+      "path": "enhancer/scripts/verify-skill-manager.mjs",
+      "sha256": "b2562244085cb1547aabd55c8b35725c0b0e79124304069a6a16a15a1d27e706",
+      "size": 13533
+    },
+    {
+      "path": "enhancer/scripts/verify-usage-display.mjs",
+      "sha256": "29836a7a8036fafc5a9309393d30f12e4cf5e2a9d8a5cbdcc48017871bbdda72",
+      "size": 3885
+    },
+    {
+      "path": "enhancer/scripts/verify-view-switch.mjs",
+      "sha256": "fa3b1b94b44ff59cef36dd9c2cec6a2c41f1290d1807c77b476a6bebe091927b",
+      "size": 3075
+    },
+    {
+      "path": "enhancer/windows/launch.ps1",
+      "sha256": "059c50b4362b69ba5ec715b4a3e1ac9538e64fd79858a105bec9070b7920dd45",
+      "size": 3438
+    },
+    {
+      "path": "enhancer/windows/start-injector.ps1",
+      "sha256": "9e319d2d24ce02f36ea6d106ab0faf76b3417dc9b6e0ae347cbd4889b1da93be",
+      "size": 1897
+    },
+    {
+      "path": "enhancer/windows/stop-injector.ps1",
+      "sha256": "7bd01525e706ea9ae8d7d1f66d1c0434e24fe79aae3d32a863accab73630e7c8",
+      "size": 758
+    },
+    {
+      "path": "enhancer/windows/uninstall.ps1",
+      "sha256": "0e4beb0def25dca0c8b883b451fe21f16766a9e0659db833860459efa0e4a2b8",
+      "size": 3678
+    },
+    {
+      "path": "asset-browser/asset-browser.config.example.json",
+      "sha256": "2dd3e906f84e6201bda1411751b1cba4f1723828535b053dd7f61c2737f962d4",
+      "size": 31
+    },
+    {
+      "path": "asset-browser/download-automation.js",
+      "sha256": "7708edd706616bbf46d820a0a8bfa57a10fc3e8c63bb81e6454a395a291445bd",
+      "size": 26418
+    },
+    {
+      "path": "asset-browser/duplicate-cleaner.js",
+      "sha256": "7b249bcacf04225c65cf6d973e6955501c9f8c769dced984cd16b7863e938f1a",
+      "size": 12623
+    },
+    {
+      "path": "asset-browser/folder-operations.js",
+      "sha256": "4a4933ece547fb87283b69eb13a796ba7276187d6465133cc7b4d2eee4ad05e1",
+      "size": 5746
+    },
+    {
+      "path": "asset-browser/generation-pipeline.js",
+      "sha256": "66a4597889e8a09b2072ab76ffbff7cb5cd68636dd783172af5cc7f6cf8cf142",
+      "size": 32506
+    },
+    {
+      "path": "asset-browser/package.json",
+      "sha256": "775d4913b1f73a245c4d2d746efde40a8e9de170d1a9fcb9456e4ae0d5751fc8",
+      "size": 155
+    },
+    {
+      "path": "asset-browser/prompt-library.js",
+      "sha256": "f02dbaec65f2fccccef3b64d4ccf7c97f782e55ba02e50a0dd661f6d4a0b546a",
+      "size": 9131
+    },
+    {
+      "path": "asset-browser/rhythm-control-track.py",
+      "sha256": "6ac1fee27a1f27e6110eac4944eab3f2cd8fe2c3907554f2bdb7ccb9121b8d25",
+      "size": 15982
+    },
+    {
+      "path": "asset-browser/server.js",
+      "sha256": "bcdcabb5bf4e89cfe92aca27ebee848a3c5a4b0ad08684238aaf5bc7f9d36580",
+      "size": 76698
+    },
+    {
+      "path": "asset-browser/three-d-workbench.js",
+      "sha256": "d497bf0247398051ab0788f20ea3024f875bb76c20f72a9159dd6514dcf268db",
+      "size": 10148
+    }
+  ]
+}
