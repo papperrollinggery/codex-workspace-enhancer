@@ -442,6 +442,7 @@ export async function installMac(options = {}) {
     await writeFile(plan.launcherInfoPlistPath, plan.launcherInfoPlist, { mode: 0o644 });
     await writeFile(plan.launcherExecutablePath, plan.launcherScript, { mode: 0o755 });
 
+    runLaunchctl(plan, options, ["enable", `${domain}/${plan.label}`]);
     runLaunchctl(plan, options, ["bootstrap", domain, plan.plistPath]);
     runLaunchctl(plan, options, ["kickstart", "-k", `${domain}/${plan.label}`]);
 

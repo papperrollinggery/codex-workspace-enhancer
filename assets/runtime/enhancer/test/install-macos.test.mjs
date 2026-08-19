@@ -254,7 +254,7 @@ test("failed launchctl bootstrap restores the previous runtime", async () => {
       installMac(installOptions(home, { skipLaunchctl: false, commandRunner })),
       /installation rolled back/,
     );
-    assert.deepEqual(launchctlCalls.slice(0, 5).map((args) => args[0]), ["bootout", "print", "bootstrap", "bootout", "print"]);
+    assert.deepEqual(launchctlCalls.slice(0, 6).map((args) => args[0]), ["bootout", "print", "enable", "bootstrap", "bootout", "print"]);
     assert.equal(await readFile(proofPath, "utf8"), "previous runtime\n");
     const inspected = await inspectMac({ home, platform: "darwin", skipLaunchctl: true, nodePath: process.execPath });
     assert.equal(inspected.ownershipSafe, true, inspected.ownershipIssues.join("; "));
@@ -269,9 +269,10 @@ test("activation bootouts, bootstraps, and kickstarts the user LaunchAgent", asy
       return { status: args[0] === "print" ? 113 : 0, stdout: "", stderr: "" };
     };
     await installMac(installOptions(home, { skipLaunchctl: false, commandRunner }));
-    assert.deepEqual(launchctlCalls.map((call) => call[1]), ["bootout", "print", "bootstrap", "kickstart"]);
+    assert.deepEqual(launchctlCalls.map((call) => call[1]), ["bootout", "print", "enable", "bootstrap", "kickstart"]);
     assert.match(launchctlCalls[0][2], /^gui\/501\//);
-    assert.equal(launchctlCalls[2][2], "gui/501");
+    assert.equal(launchctlCalls[2][2], "gui/501/com.yubowen.codex-sidebar-enhancer");
+    assert.equal(launchctlCalls[3][2], "gui/501");
   });
 });
 
@@ -292,7 +293,7 @@ test("activation waits until the previous LaunchAgent is actually unloaded", asy
       commandRunner,
       launchctlPollIntervalMs: 0,
     }));
-    assert.deepEqual(launchctlCalls, ["bootout", "print", "print", "print", "bootstrap", "kickstart"]);
+    assert.deepEqual(launchctlCalls, ["bootout", "print", "print", "print", "enable", "bootstrap", "kickstart"]);
   });
 });
 
