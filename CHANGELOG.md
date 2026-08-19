@@ -21,3 +21,5 @@ All notable public changes are documented here. Versions follow Semantic Version
 
 - Project scans now degrade safely when a nested directory becomes unreadable or disappears.
 - Public plugin metadata no longer uses the `Local workspace` placeholder.
+- Fresh Git checkouts preserve manifest-hashed PowerShell bytes across operating systems.
+- CI uses the current Node 24-based major versions of official GitHub Actions.

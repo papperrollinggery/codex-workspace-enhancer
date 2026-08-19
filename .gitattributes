@@ -4,6 +4,7 @@ assets/runtime/** whitespace=-trailing-space
 assets/onepager.svg whitespace=-trailing-space
 plugin/codex-workspace-enhancer/dist/server.mjs whitespace=-trailing-space
 
-# Keep platform scripts on their native line endings.
-*.ps1 text eol=crlf
+# Bundle manifests hash exact bytes. Preserve the committed LF form even for
+# PowerShell files so a fresh checkout remains hash-identical on every OS.
+*.ps1 -text
 *.sh text eol=lf
