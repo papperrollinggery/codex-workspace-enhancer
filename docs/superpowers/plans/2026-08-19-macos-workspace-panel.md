@@ -44,7 +44,7 @@
 **Tests and docs**
 
 - Create `assets/runtime/enhancer/test/mcp-stdio-client.test.mjs`.
-- Create `assets/runtime/enhancer/test/fixtures/fake-mcp-server.mjs`.
+- Create `assets/runtime/enhancer/fixtures/fake-mcp-server.mjs`.
 - Create `assets/runtime/enhancer/test/native-workspace-client.test.mjs`.
 - Create `assets/runtime/enhancer/test/panel-context.test.mjs`.
 - Create `assets/runtime/enhancer/test/panel-module-registry.test.mjs`.
@@ -151,7 +151,7 @@ await client.close();
 assert.equal(client.state, "closed");
 ```
 
-Create `test/fixtures/fake-mcp-server.mjs` with a complete deterministic fixture:
+Create `fixtures/fake-mcp-server.mjs` with a complete deterministic fixture:
 
 ```js
 import readline from "node:readline";
