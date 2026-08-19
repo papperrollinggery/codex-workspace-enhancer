@@ -34,7 +34,8 @@ jobs:
         run: npm --prefix plugin/codex-workspace-enhancer ci
 
       - name: Verify hosted Chrome
-        run: "$CHROME_PATH" --version
+        run: |
+          "$CHROME_PATH" --version
 
       - name: Audit production dependencies
         run: npm --prefix plugin/codex-workspace-enhancer audit --omit=dev --audit-level=high
