@@ -175,7 +175,7 @@ function hostBridgeScript(appVersion) {
   try {
     hostApp = new apps.App(
       { name: "visual-workspace", version: ${JSON.stringify(appVersion)} },
-      { availableDisplayModes: ["inline", "fullscreen"] },
+      { availableDisplayModes: ["inline", "fullscreen", "pip"] },
       { autoResize: true },
     );
     hostApp.onteardown = async () => {

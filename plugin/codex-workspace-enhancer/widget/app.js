@@ -8,6 +8,7 @@
     saveDot: $("#saveDot"),
     saveStatus: $("#saveStatus"),
     refreshAssets: $("#refreshAssets"),
+    togglePip: $("#togglePip"),
     toggleMode: $("#toggleMode"),
     addNote: $("#addNote"),
     emptyAddNote: $("#emptyAddNote"),
@@ -127,7 +128,7 @@
   }
 
   function normalizeDisplayMode(value) {
-    return value === "fullscreen" || value === "inline" ? value : "";
+    return value === "fullscreen" || value === "inline" || value === "pip" ? value : "";
   }
 
   function currentDisplayMode() {
@@ -168,6 +169,9 @@
     elements.toggleMode.title = normalized === "fullscreen" ? "退出全屏" : "进入全屏";
     elements.toggleMode.setAttribute("aria-label", elements.toggleMode.title);
     elements.toggleMode.setAttribute("aria-pressed", String(normalized === "fullscreen"));
+    elements.togglePip.title = normalized === "pip" ? "退出浮动窗口" : "浮动窗口";
+    elements.togglePip.setAttribute("aria-label", elements.togglePip.title);
+    elements.togglePip.setAttribute("aria-pressed", String(normalized === "pip"));
   }
 
   async function requestDisplayMode(mode, { announce = true } = {}) {
@@ -175,7 +179,8 @@
     if (!requested) return currentDisplayMode();
     if (!hostOffersDisplayMode(requested)) {
       await reportDisplayState(requested, currentDisplayMode(), "unsupported").catch(() => {});
-      if (announce) notify(`当前 Codex 宿主不提供${requested === "fullscreen" ? "全屏" : requested}模式`, "error");
+      const label = requested === "fullscreen" ? "全屏" : requested === "pip" ? "浮动窗口" : requested;
+      if (announce) notify(`当前 Codex 宿主不提供${label}模式`, "error");
       return currentDisplayMode();
     }
     try {
@@ -184,7 +189,7 @@
       if (!granted) throw new Error("Codex 宿主没有返回有效的显示模式");
       applyDisplayMode(granted);
       await reportDisplayState(requested, granted, granted === requested ? "granted" : "declined").catch(() => {});
-      if (announce && granted !== requested) notify("Codex 保持了当前显示模式，未批准全屏请求", "error");
+      if (announce && granted !== requested) notify("Codex 保持了当前显示模式，未批准显示切换请求", "error");
       return granted;
     } catch (error) {
       applyDisplayMode(currentDisplayMode());
@@ -1011,6 +1016,10 @@
 
   function installBootstrapEvents() {
     elements.approveAccess.addEventListener("click", () => void approveProjectAccess());
+    elements.togglePip.addEventListener("click", () => {
+      const target = currentDisplayMode() === "pip" ? "inline" : "pip";
+      void requestDisplayMode(target, { announce: true });
+    });
     elements.toggleMode.addEventListener("click", () => {
       const target = currentDisplayMode() === "fullscreen" ? "inline" : "fullscreen";
       void requestDisplayMode(target, { announce: true });
@@ -1058,7 +1067,7 @@
       installBootstrapEvents();
       state.displayReceiptId = openPayload.displayReceiptId || "";
       applyDisplayMode(currentDisplayMode());
-      const preferredMode = openPayload.preferredDisplayMode === "inline" ? "inline" : "fullscreen";
+      const preferredMode = normalizeDisplayMode(openPayload.preferredDisplayMode) || "fullscreen";
       await requestDisplayMode(preferredMode, { announce: true });
       if (openPayload.accessState === "confirmation_required") {
         showAccessGate(openPayload);

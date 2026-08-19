@@ -13,5 +13,6 @@ test("host bridge fails closed when model-context updates are unavailable", () =
 
   assert.match(document, /typeof app\.updateModelContext !== "function"/);
   assert.match(document, /does not support adding Visual Workspace selections to model context/);
+  assert.match(document, /availableDisplayModes: \["inline", "fullscreen", "pip"\]/);
   assert.doesNotMatch(document, /api\.sendMessage\s*=/);
 });

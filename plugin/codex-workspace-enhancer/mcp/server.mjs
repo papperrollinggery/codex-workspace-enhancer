@@ -26,7 +26,7 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(readFileSync(path.join(ROOT, ".codex-plugin", "plugin.json"), "utf8"));
 const WIDGET_URI = "ui://widget/visual-workspace/canvas.html";
-const displayModeSchema = z.enum(["fullscreen", "inline"]);
+const displayModeSchema = z.enum(["fullscreen", "inline", "pip"]);
 const workspaceIdSchema = z.string().length(24).regex(/^[a-f0-9]+$/);
 const relativePathSchema = z.string().trim().min(1).max(4096);
 const capabilityTokenSchema = z.string().min(40).max(128).regex(/^[A-Za-z0-9_-]+$/);
@@ -120,7 +120,7 @@ registerWidgetResource(server, {
 
 registerAppTool(server, "open_visual_workspace", {
   title: "Open Visual Workspace",
-  description: "Open the active project in a native Codex image canvas and request fullscreen when the host supports it. Call only after the user asks to use Visual Workspace. Previously approved exact projects and validated worktrees from the same Git repository reopen without another confirmation click.",
+  description: "Open the active project in a native Codex image canvas and request inline, fullscreen, or picture-in-picture display when the host supports it. Call only after the user asks to use Visual Workspace. Previously approved exact projects and validated worktrees from the same Git repository reopen without another confirmation click.",
   inputSchema: {
     projectDir: z.string().trim(),
     displayMode: displayModeSchema.optional(),
@@ -196,7 +196,7 @@ server.registerTool("report_visual_workspace_display_state", {
     displayReceiptId: displayReceiptIdSchema,
     requestedMode: displayModeSchema,
     actualMode: displayModeSchema,
-    availableModes: z.array(displayModeSchema).max(2),
+    availableModes: z.array(displayModeSchema).max(3),
     outcome: z.enum(["granted", "declined", "unsupported", "error"]),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },

@@ -135,6 +135,23 @@ try {
   if (reopened.structuredContent?.workspaceId || reopened.structuredContent?.accessToken || reopened.structuredContent?.projectDir) {
     throw new Error("Reopened project exposed project capabilities to the model");
   }
+  const pipOpen = await client.callTool({
+    name: "open_visual_workspace",
+    arguments: { projectDir, displayMode: "pip" },
+  });
+  if (pipOpen.isError || pipOpen.structuredContent?.preferredDisplayMode !== "pip") {
+    throw new Error("Visual Workspace did not preserve a PiP request");
+  }
+  const pipReceiptId = pipOpen.structuredContent?.displayReceiptId;
+  const pipReport = await client.callTool({
+    name: "report_visual_workspace_display_state",
+    arguments: { displayReceiptId: pipReceiptId, requestedMode: "pip", actualMode: "pip", availableModes: ["inline", "fullscreen", "pip"], outcome: "granted" },
+  });
+  if (pipReport.isError) throw new Error("Visual Workspace rejected a valid PiP host report");
+  const pipReceipt = await client.callTool({ name: "get_visual_workspace_display_receipt", arguments: { displayReceiptId: pipReceiptId } });
+  if (pipReceipt.structuredContent?.actualMode !== "pip" || pipReceipt.structuredContent?.outcome !== "granted") {
+    throw new Error("Visual Workspace did not retain the PiP display receipt");
+  }
   const unknownOpen = await client.callTool({
     name: "open_visual_workspace",
     arguments: { projectDir: directProjectDir, displayMode: "fullscreen" },
