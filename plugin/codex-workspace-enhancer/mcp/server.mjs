@@ -10,9 +10,12 @@ import { z } from "zod";
 
 import { inlineWidget, readText, registerWidgetResource } from "./lib/widget-resource.mjs";
 import {
+  approveProjectAccessRequest,
   readWorkspaceAsset,
   readWorkspaceBoard,
   registerWorkspace,
+  rememberProjectAccessRequest,
+  reopenApprovedWorkspace,
   resolveWorkspace,
   saveWorkspaceBoard,
   scanWorkspaceAssets,
@@ -28,17 +31,15 @@ const workspaceIdSchema = z.string().length(24).regex(/^[a-f0-9]+$/);
 const relativePathSchema = z.string().trim().min(1).max(4096);
 const capabilityTokenSchema = z.string().min(40).max(128).regex(/^[A-Za-z0-9_-]+$/);
 const displayReceiptIdSchema = z.string().min(40).max(128).regex(/^[A-Za-z0-9_-]+$/);
-const ACCESS_REQUEST_TTL_MS = 10 * 60 * 1000;
 const DISPLAY_RECEIPT_TTL_MS = 30 * 60 * 1000;
 const MAX_DISPLAY_RECEIPTS = 512;
 const ACCESS_SESSION_IDLE_TTL_MS = 2 * 60 * 60 * 1000;
 const ACCESS_SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
-const pendingAccessRequests = new Map();
 const workspaceSessions = new Map();
 const displayReceipts = new Map();
 
 const server = new McpServer({ name: manifest.name, version: manifest.version }, {
-  instructions: "Open the native Visual Workspace only after the user asks for it and pass the active workspace absolute path. The widget is port-free and asks the user inside the app before reading project images when the host does not provide workspace roots.",
+  instructions: "Open the native Visual Workspace only after the user asks for it and pass the active workspace absolute path. A project approved once in the widget can reopen directly, including validated Codex worktrees linked to the same Git repository. An unrelated project still requires its own first approval.",
 });
 
 function opaqueToken() {
@@ -51,9 +52,6 @@ function sameDisplayModes(left, right) {
 
 function purgeExpiredCapabilities() {
   const now = Date.now();
-  for (const [token, request] of pendingAccessRequests) {
-    if (now - request.createdAt > ACCESS_REQUEST_TTL_MS) pendingAccessRequests.delete(token);
-  }
   for (const [token, session] of workspaceSessions) {
     if (now - session.lastUsedAt > ACCESS_SESSION_IDLE_TTL_MS || now - session.createdAt > ACCESS_SESSION_MAX_AGE_MS) {
       workspaceSessions.delete(token);
@@ -122,7 +120,7 @@ registerWidgetResource(server, {
 
 registerAppTool(server, "open_visual_workspace", {
   title: "Open Visual Workspace",
-  description: "Open the active project in a native Codex image canvas and request fullscreen when the host supports it. Call only after the user asks to use Visual Workspace.",
+  description: "Open the active project in a native Codex image canvas and request fullscreen when the host supports it. Call only after the user asks to use Visual Workspace. Previously approved exact projects and validated worktrees from the same Git repository reopen without another confirmation click.",
   inputSchema: {
     projectDir: z.string().trim(),
     displayMode: displayModeSchema.optional(),
@@ -151,31 +149,42 @@ registerAppTool(server, "open_visual_workspace", {
   });
   const hostRoots = await optionalClientWorkspaceRoots();
   let widgetData;
+  let authorizationSource;
   if (hostRoots.length) {
     try {
-      const workspace = await registerWorkspace({ projectDir, confirmProjectAccess: true, allowedRoots: hostRoots });
+      const workspace = await registerWorkspace({ projectDir, confirmProjectAccess: true, allowedRoots: hostRoots, approvalSource: "host-root" });
       widgetData = { ...workspace, accessToken: issueWorkspaceSession(workspace.workspaceId), accessState: "approved" };
+      authorizationSource = "host-root";
     } catch (_error) {
       // A missing/mismatched optional host root falls back to an explicit in-widget user decision.
     }
   }
   if (!widgetData) {
+    const workspace = await reopenApprovedWorkspace(projectDir);
+    if (workspace) {
+      widgetData = { ...workspace, accessToken: issueWorkspaceSession(workspace.workspaceId), accessState: "approved" };
+      authorizationSource = "previous-approval";
+    }
+  }
+  if (!widgetData) {
     const accessRequestId = opaqueToken();
-    pendingAccessRequests.set(accessRequestId, { projectDir, createdAt: Date.now() });
+    const pendingAccess = await rememberProjectAccessRequest({ accessRequestId, projectDir });
     widgetData = {
       accessState: "confirmation_required",
       accessRequestId,
+      accessRequestExpiresAt: pendingAccess.expiresAt,
       projectDir,
       projectName: path.basename(projectDir),
     };
+    authorizationSource = "confirmation-required";
   }
   const visibleState = widgetData.accessState;
   return {
-    content: [{ type: "text", text: visibleState === "approved" ? "Visual Workspace is ready for the host-approved project." : "Visual Workspace is ready and is waiting for the user to approve project image access inside the widget." }],
-    structuredContent: { preferredDisplayMode, rendering: "native-widget", accessState: visibleState, displayReceiptId },
+    content: [{ type: "text", text: visibleState === "approved" ? "Visual Workspace is ready for the approved project." : "Visual Workspace is ready and is waiting for the user to approve project image access inside the widget." }],
+    structuredContent: { preferredDisplayMode, rendering: "native-widget", accessState: visibleState, authorizationSource, displayReceiptId },
     _meta: {
       "openai/outputTemplate": WIDGET_URI,
-      widgetData: { ...widgetData, preferredDisplayMode, displayReceiptId, rendering: "native-widget" },
+      widgetData: { ...widgetData, preferredDisplayMode, authorizationSource, displayReceiptId, rendering: "native-widget" },
     },
   };
 });
@@ -277,15 +286,7 @@ server.registerTool("approve_visual_workspace_access", {
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   _meta: { ui: { resourceUri: WIDGET_URI, visibility: ["app"] } },
 }, async ({ accessRequestId }) => {
-  purgeExpiredCapabilities();
-  const request = pendingAccessRequests.get(accessRequestId);
-  if (!request) throw new Error("Project access request expired; reopen Visual Workspace");
-  pendingAccessRequests.delete(accessRequestId);
-  const workspace = await registerWorkspace({
-    projectDir: request.projectDir,
-    confirmProjectAccess: true,
-    allowedRoots: [request.projectDir],
-  });
+  const workspace = await approveProjectAccessRequest(accessRequestId);
   return {
     content: [{ type: "text", text: "Project access approved from the Visual Workspace user interface." }],
     structuredContent: {

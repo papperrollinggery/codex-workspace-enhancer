@@ -256,6 +256,7 @@ try {
   const consentPayload = {
     accessState: "confirmation_required",
     accessRequestId: "r".repeat(43),
+    accessRequestExpiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     projectDir: "/Users/qa/creative-project",
     projectName: "creative-project",
     preferredDisplayMode: "fullscreen",
@@ -291,6 +292,7 @@ window.visualWorkspaceMcp = {
   await consent.waitForFunction(() => !document.querySelector("#accessGate")?.hidden && document.querySelector("#app")?.getAttribute("aria-busy") === "false");
   const beforeApproval = await consent.evaluate(() => ({
     projectPath: document.querySelector("#accessProject")?.textContent,
+    expiryText: document.querySelector("#accessExpiry")?.textContent,
     displayMode: document.documentElement.dataset.displayMode,
     toast: document.querySelector("#toast")?.textContent,
     calls: structuredClone(window.__consentCalls),
@@ -304,6 +306,25 @@ window.visualWorkspaceMcp = {
   }));
   const consentReport = { beforeApproval, afterApproval, errors: consentErrors };
   await consent.close();
+
+  const expiredConsentPayload = {
+    ...consentPayload,
+    accessRequestId: "e".repeat(43),
+    accessRequestExpiresAt: new Date(0).toISOString(),
+  };
+  const expiredConsentHtml = baseHtml
+    .replace("/* __VISUAL_WORKSPACE_CSS__ */", css)
+    .replace("/* __VISUAL_WORKSPACE_JS__ */", js)
+    .replace("</head>", `${consentMock.replace(JSON.stringify(consentPayload), JSON.stringify(expiredConsentPayload))}</head>`);
+  const expiredConsent = await browser.newPage({ viewport: { width: 980, height: 760 }, colorScheme: "light", reducedMotion: "no-preference" });
+  await expiredConsent.setContent(expiredConsentHtml, { waitUntil: "domcontentloaded" });
+  await expiredConsent.waitForFunction(() => !document.querySelector("#accessGate")?.hidden && document.querySelector("#app")?.getAttribute("aria-busy") === "false");
+  const expiredConsentReport = await expiredConsent.evaluate(() => ({
+    buttonDisabled: document.querySelector("#approveAccess")?.disabled,
+    buttonText: document.querySelector("#approveAccess")?.textContent,
+    expiryText: document.querySelector("#accessExpiry")?.textContent,
+  }));
+  await expiredConsent.close();
 
   const lazyBoard = structuredClone(board);
   for (let index = 0; index < 80; index += 1) {
@@ -441,13 +462,16 @@ window.visualWorkspaceMcp = {
   const consentApprove = consentReport.afterApproval.calls.find((call) => call.name === "approve_visual_workspace_access");
   const consentLoad = consentReport.afterApproval.calls.find((call) => call.name === "get_visual_workspace");
   const consentDisplayReport = consentReport.beforeApproval.calls.find((call) => call.name === "report_visual_workspace_display_state");
-  if (consentReport.errors.length || consentReport.beforeApproval.projectPath !== consentPayload.projectDir || consentReport.beforeApproval.displayMode !== "inline" || !consentReport.beforeApproval.toast.includes("不提供全屏") || consentReport.beforeApproval.calls.length !== 1 || consentDisplayReport?.args?.outcome !== "unsupported" || consentDisplayReport?.args?.actualMode !== "inline" || !consentApprove || !consentLoad || consentLoad.args.accessToken !== accessToken || !consentReport.afterApproval.gateHidden) {
+  if (consentReport.errors.length || consentReport.beforeApproval.projectPath !== consentPayload.projectDir || !consentReport.beforeApproval.expiryText?.includes("worktree") || consentReport.beforeApproval.displayMode !== "inline" || !consentReport.beforeApproval.toast.includes("不提供全屏") || consentReport.beforeApproval.calls.length !== 1 || consentDisplayReport?.args?.outcome !== "unsupported" || consentDisplayReport?.args?.actualMode !== "inline" || !consentApprove || !consentLoad || consentLoad.args.accessToken !== accessToken || !consentReport.afterApproval.gateHidden) {
     throw new Error(`Rootless consent or declined-fullscreen flow failed: ${JSON.stringify(consentReport)}`);
+  }
+  if (!expiredConsentReport.buttonDisabled || !expiredConsentReport.buttonText?.includes("已过期") || !expiredConsentReport.expiryText?.includes("重新打开并再次确认")) {
+    throw new Error(`Expired consent remained actionable: ${JSON.stringify(expiredConsentReport)}`);
   }
   if (hostErrors.length || !hostReport.initialized || hostReport.displayModeRequested !== "inline" || hostReport.displayModeApplied !== "inline" || !hostReport.bridgeInstalled || !hostReport.toolCalls.includes("report_visual_workspace_display_state") || !hostReport.toolCalls.includes("get_visual_workspace") || !hostReport.toolCalls.includes("revoke_visual_workspace_access")) {
     throw new Error(`Native MCP Apps bridge failed: ${JSON.stringify({ hostErrors, hostReport })}`);
   }
-  await writeFile(path.join(outputDir, "native-visual-workspace-report.json"), `${JSON.stringify({ reports, reducedReport, inlineReport, consentReport, lazyReport, hostReport }, null, 2)}\n`);
+  await writeFile(path.join(outputDir, "native-visual-workspace-report.json"), `${JSON.stringify({ reports, reducedReport, inlineReport, consentReport, expiredConsentReport, lazyReport, hostReport }, null, 2)}\n`);
   console.log(`OK: native widget visual QA passed in light and dark modes. Screenshots: ${outputDir}/native-visual-workspace-{light,dark}.png`);
 } finally {
   await browser.close();

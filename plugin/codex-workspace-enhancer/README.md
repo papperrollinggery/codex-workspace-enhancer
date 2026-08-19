@@ -6,7 +6,9 @@ Visual Workspace is the preferred Codex Workspace Enhancer surface. It opens a s
 
 - Composer icon and plugin prompt entry
 - Standalone bundled stdio MCP server (`dist/server.mjs`)
-- Exact-path in-widget approval when host roots are unavailable
+- Direct reopening for approved exact paths and validated worktrees from the same Git repository
+- One-time exact-path in-widget approval when host roots are unavailable
+- Durable, atomically single-use pending approvals across MCP server restarts
 - Session-scoped capability with teardown revocation and bounded expiry
 - Bounded, read-only project image scan and preview
 - Infinite pan/zoom canvas, notes, resize, and multi-selection

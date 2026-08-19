@@ -12,10 +12,13 @@ const serverOption = process.argv.indexOf("--server");
 const serverEntry = serverOption >= 0 ? path.resolve(process.argv[serverOption + 1] || "") : "./scripts/start-mcp.mjs";
 if (!serverEntry) throw new Error("--server requires a path");
 const projectDir = path.join(temporary, "project");
+const directProjectDir = path.join(temporary, "direct-project");
 const stateRoot = path.join(temporary, "state");
 await mkdir(path.join(projectDir, "references"), { recursive: true });
+await mkdir(path.join(directProjectDir, "references"), { recursive: true });
 const imagePath = path.join(projectDir, "references", "probe.png");
 await writeFile(imagePath, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=", "base64"));
+await writeFile(path.join(directProjectDir, "references", "direct.png"), Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=", "base64"));
 
 const transport = new StdioClientTransport({
   command: "node",
@@ -74,6 +77,7 @@ try {
     throw new Error("Open tool exposed local project capabilities to the model");
   }
   if (opened.structuredContent?.accessState !== "confirmation_required") throw new Error("Rootless host must receive an in-widget access gate");
+  if (opened.structuredContent?.authorizationSource !== "confirmation-required") throw new Error("Rootless first approval reported the wrong authorization source");
   if (opened.structuredContent?.preferredDisplayMode !== "fullscreen") throw new Error("Visual Workspace must default to fullscreen");
   const displayReceiptId = opened.structuredContent?.displayReceiptId;
   if (!displayReceiptId) throw new Error("Open tool did not return a display-mode diagnostic receipt id");
@@ -111,6 +115,33 @@ try {
   const workspaceId = approved.structuredContent?.workspaceId;
   const accessToken = approved.structuredContent?.accessToken;
   if (!workspaceId || !accessToken) throw new Error("In-widget project approval did not issue a session capability");
+
+  const reopened = await client.callTool({
+    name: "open_visual_workspace",
+    arguments: { projectDir, displayMode: "fullscreen" },
+  });
+  if (reopened.structuredContent?.accessState !== "approved") {
+    throw new Error("A previously approved exact project required another confirmation click");
+  }
+  if (reopened.structuredContent?.authorizationSource !== "previous-approval") {
+    throw new Error("Reopened project reported the wrong authorization source");
+  }
+  if (!reopened.content?.some((item) => item.type === "text" && item.text === "Visual Workspace is ready for the approved project.")) {
+    throw new Error("Reopened project was mislabeled as host-approved");
+  }
+  if (!reopened._meta?.widgetData?.workspaceId || !reopened._meta?.widgetData?.accessToken) {
+    throw new Error("Reopened project did not issue a private widget session capability");
+  }
+  if (reopened.structuredContent?.workspaceId || reopened.structuredContent?.accessToken || reopened.structuredContent?.projectDir) {
+    throw new Error("Reopened project exposed project capabilities to the model");
+  }
+  const unknownOpen = await client.callTool({
+    name: "open_visual_workspace",
+    arguments: { projectDir: directProjectDir, displayMode: "fullscreen" },
+  });
+  if (unknownOpen.structuredContent?.accessState !== "confirmation_required") {
+    throw new Error("An unrelated project bypassed the first-time confirmation gate");
+  }
 
   const unauthorized = await client.callTool({
     name: "get_visual_workspace",
@@ -196,6 +227,7 @@ try {
   await rootedClient.connect(rootedTransport);
   const rootedOpen = await rootedClient.callTool({ name: "open_visual_workspace", arguments: { projectDir } });
   if (rootedOpen.structuredContent?.accessState !== "approved") throw new Error("Host-approved roots did not authorize the matching project");
+  if (rootedOpen.structuredContent?.authorizationSource !== "host-root") throw new Error("Host-root open reported the wrong authorization source");
   if (rootedOpen.structuredContent?.workspaceId || rootedOpen.structuredContent?.accessToken || rootedOpen.structuredContent?.projectDir) {
     throw new Error("Host-approved open exposed project capabilities to the model");
   }

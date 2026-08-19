@@ -62,7 +62,7 @@
         <p>Visual Workspace 只会扫描项目内的图片，并把画布布局保存到本机应用数据；不会修改、移动或删除原图。</p>
         <code id="accessProject">正在确认项目…</code>
         <button id="approveAccess" type="button" class="primary-button">允许并打开画布</button>
-        <small>关闭画布时会尝试撤销授权；若宿主中断清理，授权会在空闲 2 小时或最长 12 小时后失效。</small>
+        <small id="accessExpiry">批准一次后，同一 Git 仓库的已校验 Codex worktree 可直接打开。待确认请求最长保留 12 小时并可跨插件重启恢复；会话授权空闲 2 小时或最长 12 小时后自动失效。</small>
       </section>
       <div id="emptyState" class="empty-state">
         <span class="empty-symbol" aria-hidden="true">⌘</span>

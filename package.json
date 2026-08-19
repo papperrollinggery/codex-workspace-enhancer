@@ -1,6 +1,6 @@
 {
   "name": "codex-workspace-enhancer",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Native Codex visual workspace with a port-free MCP App and safe local image canvas.",
   "license": "MIT",

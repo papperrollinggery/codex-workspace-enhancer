@@ -24,6 +24,8 @@ const MAX_NODES = 300;
 const MAX_NOTE_LENGTH = 2_000;
 const LOCK_STALE_MS = 30_000;
 const LOCK_WAIT_MS = 8_000;
+const ACCESS_REQUEST_TTL_MS = 12 * 60 * 60 * 1000;
+const MAX_ACCESS_REQUESTS = 512;
 
 function stateRoot() {
   if (process.env.CODEX_WORKSPACE_ENHANCER_STATE_ROOT) {
@@ -40,6 +42,10 @@ function stateRoot() {
 
 const ROOT = stateRoot();
 const CATALOG_FILE = path.join(ROOT, "workspaces.json");
+const ACCESS_REQUESTS_FILE = path.join(ROOT, "access-requests.json");
+const CAPABILITY_TOKEN_PATTERN = /^[A-Za-z0-9_-]{40,128}$/;
+const APPROVAL_SOURCES = new Set(["host-root", "widget-approval", "inherited-worktree"]);
+const PERSISTENT_APPROVAL_SOURCES = new Set(["widget-approval", "inherited-worktree"]);
 
 function workspaceIdFor(root) {
   return createHash("sha256").update(root).digest("hex").slice(0, 24);
@@ -167,6 +173,62 @@ export async function validateProjectRoot(projectDir) {
   return real;
 }
 
+async function readRegularText(file, maximumBytes = 4096) {
+  let stats;
+  try {
+    stats = await fs.lstat(file);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+  if (!stats.isFile() || stats.isSymbolicLink() || stats.size > maximumBytes) return null;
+  return await fs.readFile(file, "utf8");
+}
+
+async function gitRepositoryIdentity(projectRoot) {
+  const marker = path.join(projectRoot, ".git");
+  let markerStats;
+  try {
+    markerStats = await fs.lstat(marker);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+  if (markerStats.isSymbolicLink()) return null;
+
+  let commonDirectory;
+  if (markerStats.isDirectory()) {
+    commonDirectory = await fs.realpath(marker);
+  } else if (markerStats.isFile() && markerStats.size <= 4096) {
+    const pointer = await fs.readFile(marker, "utf8");
+    const match = /^gitdir:\s*(.+?)\s*$/i.exec(pointer);
+    if (!match) return null;
+    const gitDirectory = await fs.realpath(path.resolve(projectRoot, match[1])).catch(() => null);
+    if (!gitDirectory) return null;
+    const gitDirectoryStats = await fs.lstat(gitDirectory);
+    if (!gitDirectoryStats.isDirectory() || gitDirectoryStats.isSymbolicLink()) return null;
+    const backlink = (await readRegularText(path.join(gitDirectory, "gitdir")))?.trim();
+    if (!backlink || path.resolve(backlink) !== marker) return null;
+    const commonPointer = (await readRegularText(path.join(gitDirectory, "commondir")))?.trim();
+    if (!commonPointer) return null;
+    commonDirectory = await fs.realpath(path.resolve(gitDirectory, commonPointer)).catch(() => null);
+    if (!commonDirectory || !isContained(path.join(commonDirectory, "worktrees"), gitDirectory)) return null;
+  } else {
+    return null;
+  }
+
+  const [commonStats, objectsStats, headText, configText] = await Promise.all([
+    fs.lstat(commonDirectory).catch(() => null),
+    fs.lstat(path.join(commonDirectory, "objects")).catch(() => null),
+    readRegularText(path.join(commonDirectory, "HEAD")),
+    readRegularText(path.join(commonDirectory, "config"), 1024 * 1024),
+  ]);
+  if (!commonStats?.isDirectory() || commonStats.isSymbolicLink()
+    || !objectsStats?.isDirectory() || objectsStats.isSymbolicLink()
+    || headText === null || configText === null) return null;
+  return createHash("sha256").update(commonDirectory).digest("hex");
+}
+
 async function readCatalog() {
   await ensureStateRoot();
   const catalog = await readJson(CATALOG_FILE, { version: 1, workspaces: [] });
@@ -174,10 +236,198 @@ async function readCatalog() {
   return catalog;
 }
 
-export async function registerWorkspace({ projectDir, confirmProjectAccess, allowedRoots = [] }) {
+function validateAccessRequestState(state) {
+  if (state?.version !== 1 || !Array.isArray(state.requests)) {
+    throw new Error("Visual Workspace access-request state has an unsupported format");
+  }
+  for (const request of state.requests) {
+    if (!request || typeof request !== "object"
+      || !CAPABILITY_TOKEN_PATTERN.test(request.accessRequestId || "")
+      || typeof request.projectDir !== "string"
+      || !Number.isFinite(request.createdAt)
+      || !Number.isFinite(request.expiresAt)) {
+      throw new Error("Visual Workspace access-request state is invalid and was left untouched");
+    }
+  }
+  return state;
+}
+
+async function initializeAccessRequestState() {
+  await ensureStateRoot();
+  let handle;
+  try {
+    handle = await fs.open(ACCESS_REQUESTS_FILE, fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY, 0o600);
+    await handle.writeFile('{"version":1,"requests":[]}\n');
+  } finally {
+    await handle?.close().catch(() => {});
+  }
+}
+
+function accessRequestClaimOwner(name) {
+  const match = /^\.access-requests\.claim-(\d+)-[a-f0-9-]+\.json$/.exec(name);
+  return match ? Number.parseInt(match[1], 10) : null;
+}
+
+async function accessRequestClaims() {
+  const entries = await fs.readdir(ROOT, { withFileTypes: true });
+  const claims = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || accessRequestClaimOwner(entry.name) === null) continue;
+    const file = path.join(ROOT, entry.name);
+    const stats = await fs.lstat(file);
+    if (!stats.isFile() || stats.isSymbolicLink()) throw new Error("Visual Workspace access-request claim must be a regular file");
+    claims.push({ file, name: entry.name, pid: accessRequestClaimOwner(entry.name), stats });
+  }
+  return claims;
+}
+
+async function processIsAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "EPERM";
+  }
+}
+
+async function recoverAccessRequestClaim() {
+  const claims = await accessRequestClaims();
+  const canonicalExists = await fs.lstat(ACCESS_REQUESTS_FILE).then(() => true, (error) => {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  });
+  let recovered = false;
+  for (const claim of claims) {
+    const stale = Date.now() - claim.stats.mtimeMs > LOCK_STALE_MS && !(await processIsAlive(claim.pid));
+    if (!stale) continue;
+    if (canonicalExists || recovered) {
+      await fs.rm(claim.file, { force: true });
+      continue;
+    }
+    try {
+      await fs.rename(claim.file, ACCESS_REQUESTS_FILE);
+      recovered = true;
+    } catch (error) {
+      if (error?.code !== "ENOENT" && error?.code !== "EEXIST") throw error;
+    }
+  }
+  return { claims: claims.length, recovered };
+}
+
+async function withAccessRequestState(operation) {
+  await ensureStateRoot();
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  while (true) {
+    const claimFile = path.join(ROOT, `.access-requests.claim-${process.pid}-${randomUUID()}.json`);
+    try {
+      await fs.rename(ACCESS_REQUESTS_FILE, claimFile);
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+      const recovery = await recoverAccessRequestClaim();
+      if (recovery.recovered) continue;
+      if (recovery.claims === 0) {
+        try {
+          await initializeAccessRequestState();
+        } catch (initializeError) {
+          if (initializeError?.code !== "EEXIST") throw initializeError;
+        }
+        continue;
+      }
+      if (Date.now() >= deadline) throw new Error("Visual Workspace access-request state is busy; retry the action");
+      await sleep(80);
+      continue;
+    }
+    try {
+      const current = validateAccessRequestState(await readJson(claimFile, null));
+      const { nextState, result } = await operation(current);
+      await atomicWriteJson(ACCESS_REQUESTS_FILE, validateAccessRequestState(nextState));
+      await fs.rm(claimFile, { force: true });
+      return result;
+    } catch (error) {
+      try {
+        await fs.link(claimFile, ACCESS_REQUESTS_FILE);
+        await fs.rm(claimFile, { force: true });
+      } catch (restoreError) {
+        if (restoreError?.code !== "EEXIST" && restoreError?.code !== "ENOENT") throw restoreError;
+      }
+      throw error;
+    }
+  }
+}
+
+function normalizeAccessRequestId(value) {
+  const accessRequestId = String(value || "").trim();
+  if (!CAPABILITY_TOKEN_PATTERN.test(accessRequestId)) throw new Error("Invalid project access request id");
+  return accessRequestId;
+}
+
+export async function rememberProjectAccessRequest({ accessRequestId, projectDir }) {
+  const id = normalizeAccessRequestId(accessRequestId);
+  const root = await validateProjectRoot(projectDir);
+  const now = Date.now();
+  const request = { accessRequestId: id, projectDir: root, createdAt: now, expiresAt: now + ACCESS_REQUEST_TTL_MS };
+  return await withAccessRequestState(async (current) => {
+    const requests = current.requests
+      .filter((entry) => entry.expiresAt > now && entry.accessRequestId !== id)
+      .slice(-(MAX_ACCESS_REQUESTS - 1));
+    requests.push(request);
+    return {
+      nextState: { version: 1, requests },
+      result: { accessRequestId: id, expiresAt: new Date(request.expiresAt).toISOString() },
+    };
+  });
+}
+
+export async function consumeProjectAccessRequest(value) {
+  const accessRequestId = normalizeAccessRequestId(value);
+  const now = Date.now();
+  const result = await withAccessRequestState(async (current) => {
+    let matched = null;
+    const requests = [];
+    for (const entry of current.requests) {
+      if (entry.expiresAt <= now) continue;
+      if (!matched && entry.accessRequestId === accessRequestId) {
+        matched = entry;
+        continue;
+      }
+      requests.push(entry);
+    }
+    const projectDir = matched ? await validateProjectRoot(matched.projectDir) : null;
+    return { nextState: { version: 1, requests }, result: { projectDir } };
+  });
+  if (!result.projectDir) throw new Error("Project access request expired; reopen Visual Workspace");
+  return result.projectDir;
+}
+
+export async function approveProjectAccessRequest(value) {
+  const accessRequestId = normalizeAccessRequestId(value);
+  const now = Date.now();
+  const result = await withAccessRequestState(async (current) => {
+    const active = current.requests.filter((entry) => entry.expiresAt > now);
+    const matched = active.find((entry) => entry.accessRequestId === accessRequestId) || null;
+    if (!matched) return { nextState: { version: 1, requests: active }, result: { workspace: null } };
+    const projectDir = await validateProjectRoot(matched.projectDir);
+    const workspace = await registerWorkspace({
+      projectDir,
+      confirmProjectAccess: true,
+      allowedRoots: [projectDir],
+      approvalSource: "widget-approval",
+    });
+    return {
+      nextState: { version: 1, requests: active.filter((entry) => entry.accessRequestId !== accessRequestId) },
+      result: { workspace },
+    };
+  });
+  if (!result.workspace) throw new Error("Project access request expired; reopen Visual Workspace");
+  return result.workspace;
+}
+
+export async function registerWorkspace({ projectDir, confirmProjectAccess, allowedRoots = [], approvalSource = "host-root", approvalRootId = null }) {
   if (confirmProjectAccess !== true) {
     throw new Error("Opening a project requires confirmProjectAccess=true after the user asks to use Visual Workspace");
   }
+  if (!APPROVAL_SOURCES.has(approvalSource)) throw new Error("Unsupported project approval source");
   const root = await validateProjectRoot(projectDir);
   const approvedRoots = [];
   for (const candidate of allowedRoots) {
@@ -195,12 +445,19 @@ export async function registerWorkspace({ projectDir, confirmProjectAccess, allo
   const catalog = await withFileLock("catalog", async () => {
     const current = await readCatalog();
     const existing = current.workspaces.find((entry) => entry.id === workspaceId);
+    const effectiveApprovalSource = approvalSource === "host-root" && PERSISTENT_APPROVAL_SOURCES.has(existing?.approvalSource)
+      ? existing.approvalSource
+      : approvalSource;
     const nextEntry = {
       id: workspaceId,
       root,
       name: path.basename(root),
       approvedAt: existing?.approvedAt || new Date().toISOString(),
       lastOpenedAt: new Date().toISOString(),
+      approvalSource: effectiveApprovalSource,
+      ...(effectiveApprovalSource === "inherited-worktree"
+        ? { approvalRootId: approvalRootId || existing?.approvalRootId || workspaceId }
+        : {}),
     };
     const workspaces = current.workspaces.filter((entry) => entry.id !== workspaceId);
     workspaces.push(nextEntry);
@@ -210,6 +467,36 @@ export async function registerWorkspace({ projectDir, confirmProjectAccess, allo
   });
   const workspace = catalog.workspaces.find((entry) => entry.id === workspaceId);
   return { workspaceId, projectName: workspace.name, projectRoot: workspace.root };
+}
+
+export async function reopenApprovedWorkspace(projectDir) {
+  const root = await validateProjectRoot(projectDir);
+  const workspaceId = workspaceIdFor(root);
+  const catalog = await readCatalog();
+  const exact = catalog.workspaces.find((entry) => entry.id === workspaceId && entry.root === root);
+  if (exact && PERSISTENT_APPROVAL_SOURCES.has(exact.approvalSource)) {
+    return { workspaceId, projectName: exact.name, projectRoot: exact.root };
+  }
+
+  const repositoryId = await gitRepositoryIdentity(root);
+  if (!repositoryId) return null;
+  for (const entry of catalog.workspaces) {
+    if (!PERSISTENT_APPROVAL_SOURCES.has(entry.approvalSource)) continue;
+    try {
+      const approvedRoot = await validateProjectRoot(entry.root);
+      if (await gitRepositoryIdentity(approvedRoot) !== repositoryId) continue;
+      return await registerWorkspace({
+        projectDir: root,
+        confirmProjectAccess: true,
+        allowedRoots: [root],
+        approvalSource: "inherited-worktree",
+        approvalRootId: entry.approvalRootId || entry.id,
+      });
+    } catch (_error) {
+      // Missing or invalid historical roots never widen current project access.
+    }
+  }
+  return null;
 }
 
 export async function resolveWorkspace(workspaceId) {
@@ -472,4 +759,9 @@ export const workspaceLimits = Object.freeze({
   maxScanMs: MAX_SCAN_MS,
   maxPreviewBytes: MAX_PREVIEW_BYTES,
   maxNodes: MAX_NODES,
+});
+
+export const accessRequestLimits = Object.freeze({
+  ttlMs: ACCESS_REQUEST_TTL_MS,
+  maxRequests: MAX_ACCESS_REQUESTS,
 });

@@ -19,6 +19,7 @@
     marquee: $("#marquee"),
     accessGate: $("#accessGate"),
     accessProject: $("#accessProject"),
+    accessExpiry: $("#accessExpiry"),
     approveAccess: $("#approveAccess"),
     empty: $("#emptyState"),
     zoomOut: $("#zoomOut"),
@@ -42,6 +43,9 @@
     workspaceId: "",
     accessToken: "",
     accessRequestId: "",
+    accessRequestExpiresAt: null,
+    accessExpiryTimer: 0,
+    accessRequestExpired: false,
     projectDir: "",
     projectName: "",
     assets: [],
@@ -198,8 +202,32 @@
     elements.projectName.textContent = `${state.projectName} · 原生画布`;
   }
 
+  function expireAccessGate() {
+    state.accessRequestExpired = true;
+    clearInterval(state.accessExpiryTimer);
+    state.accessExpiryTimer = 0;
+    elements.approveAccess.disabled = true;
+    elements.approveAccess.removeAttribute("aria-busy");
+    elements.approveAccess.textContent = "授权请求已过期";
+    elements.accessExpiry.textContent = "请在当前对话中重新打开并再次确认这个尚未批准的项目。";
+    setSaveState("error", "授权请求已过期");
+  }
+
+  function updateAccessExpiry() {
+    if (!Number.isFinite(state.accessRequestExpiresAt)) return;
+    if (Date.now() >= state.accessRequestExpiresAt) {
+      expireAccessGate();
+      return;
+    }
+    const expiresAt = new Date(state.accessRequestExpiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    elements.accessExpiry.textContent = `批准一次后，同一 Git 仓库的已校验 Codex worktree 可直接打开。本次确认请求可跨插件重启恢复，并将在 ${expiresAt} 到期；会话授权空闲 2 小时或最长 12 小时后失效。`;
+  }
+
   function showAccessGate(payload) {
     state.accessRequestId = payload.accessRequestId;
+    const accessRequestExpiresAt = Date.parse(payload.accessRequestExpiresAt || "");
+    state.accessRequestExpiresAt = Number.isFinite(accessRequestExpiresAt) ? accessRequestExpiresAt : null;
+    state.accessRequestExpired = false;
     state.projectDir = payload.projectDir || "";
     state.projectName = payload.projectName || "当前项目";
     elements.projectName.textContent = `${state.projectName} · 等待授权`;
@@ -209,11 +237,18 @@
     elements.app.classList.add("access-pending");
     elements.app.setAttribute("aria-busy", "false");
     setSaveState("saving", "等待项目授权");
+    clearInterval(state.accessExpiryTimer);
+    updateAccessExpiry();
+    if (!state.accessRequestExpired && Number.isFinite(state.accessRequestExpiresAt)) {
+      state.accessExpiryTimer = window.setInterval(updateAccessExpiry, 30_000);
+    }
     requestAnimationFrame(() => elements.approveAccess.focus());
   }
 
   async function approveProjectAccess() {
-    if (!state.accessRequestId) return;
+    if (!state.accessRequestId || state.accessRequestExpired) return;
+    updateAccessExpiry();
+    if (state.accessRequestExpired) return;
     elements.approveAccess.disabled = true;
     elements.approveAccess.setAttribute("aria-busy", "true");
     elements.approveAccess.textContent = "正在验证项目…";
@@ -221,17 +256,25 @@
       const approved = await callTool("approve_visual_workspace_access", { accessRequestId: state.accessRequestId });
       applyWorkspaceAccess(approved);
       state.accessRequestId = "";
+      clearInterval(state.accessExpiryTimer);
+      state.accessExpiryTimer = 0;
       elements.accessGate.hidden = true;
       elements.app.classList.remove("access-pending");
       installWorkspaceEvents();
       await loadWorkspace();
     } catch (error) {
+      if (String(error?.message || error).includes("Project access request expired")) {
+        expireAccessGate();
+        return;
+      }
       setSaveState("error", "项目授权失败");
       notify(`无法打开项目：${error.message || error}`, "error");
     } finally {
-      elements.approveAccess.disabled = false;
-      elements.approveAccess.removeAttribute("aria-busy");
-      elements.approveAccess.textContent = "允许并打开画布";
+      if (!state.accessRequestExpired) {
+        elements.approveAccess.disabled = false;
+        elements.approveAccess.removeAttribute("aria-busy");
+        elements.approveAccess.textContent = "允许并打开画布";
+      }
     }
   }
 
@@ -993,6 +1036,7 @@
         }
       }
       state.tearingDown = true;
+      clearInterval(state.accessExpiryTimer);
       state.previewObserver?.disconnect();
       state.canvasPreviewObserver?.disconnect();
       for (const task of state.previewQueue.splice(0)) task.reject(new Error("Visual Workspace is closing"));

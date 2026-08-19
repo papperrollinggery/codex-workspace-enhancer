@@ -17,12 +17,13 @@ There is no supported contribution point in the current manifest or MCP Apps pro
 ## Runtime boundary
 
 ```text
-Codex composer icon
+Codex composer icon or explicit conversation request
   -> open_visual_workspace(projectDir)
   -> stdio MCP server
   -> ui://widget/visual-workspace/canvas.html
-  -> host roots contain project: issue a session capability
-     otherwise: show exact path and require an in-widget user click
+  -> host roots contain project: issue a task-scoped session capability
+     exact project has an app-click approval, or a validated linked worktree inherits it: issue a session capability
+     otherwise: show exact path and require one in-widget user click
   -> requestDisplayMode(fullscreen), consume the actual returned mode
   -> widget calls bounded MCP tools for scan / preview / canvas state
   -> explicit handoff attaches selected paths as structured context without sending a message
@@ -32,8 +33,9 @@ No HTTP server or TCP port is required. Project image files are scanned and read
 
 ## Security boundary
 
-- The model-visible open tool never reads project files when host roots are absent or mismatched. It only creates a short-lived, unguessable approval request for the exact candidate path.
-- Project registration then requires either a matching host root or an explicit click in the native consent screen. Broad filesystem and home-directory roots are rejected.
+- The model-visible open tool cannot create a new approval by itself. Project registration requires a matching host root or an explicit click in the native consent screen. Broad filesystem and home-directory roots are rejected.
+- A later open may reuse an app-click-approved exact realpath. A Codex worktree may inherit that approval only after its regular `.git` pointer, worktree-admin backlink, `commondir`, and Git common-directory identity all validate against a previously approved repository; an unrelated repository still requires its own first approval. Host-root catalog entries are marked separately and cannot create cross-task remembered trust without a later widget click.
+- Pending click approvals are opaque, bounded to 512 entries, stored in the user-level state directory with a 12-hour expiry, and consumed atomically once. This keeps a visible consent card usable across a normal MCP server restart without exposing its project path to model-visible structured output.
 - Later app-only tools require both the opaque `workspaceId` and an in-memory access capability. Neither capability is exposed in model-visible structured output. This boundary relies on the MCP Apps host honoring `_meta` as model-hidden and enforcing `ui.visibility: ["app"]`, as required by the host integration; the server additionally treats the token as the sole bearer secret.
 - Widget teardown requests immediate capability revocation. If host teardown is interrupted, sessions expire after 2 hours idle and have an absolute 12-hour lifetime.
 - Files must be regular supported images, remain inside the approved real project root, and pass realpath validation each time they are previewed or returned as a selection.
@@ -54,4 +56,4 @@ The widget advertises `inline` and `fullscreen`. Fullscreen is preferred for the
 4. Light/dark/reduced-motion/XSS/layout and interaction QA: `npm run verify:widget`
 5. Manifest validation: plugin-creator `validate_plugin.py`
 6. Installed source: `codex plugin list` and repeat the quality gate in the installed cache
-7. Host pickup: open a new task (or refresh/restart after marketplace changes), confirm the composer icon, open the widget, approve the exact path if prompted, and record the actual display mode granted by Codex
+7. Host pickup: open a new task (or refresh/restart after marketplace changes), confirm the composer icon, exercise first approval plus direct reopening from a linked worktree, and record the actual display mode granted by Codex

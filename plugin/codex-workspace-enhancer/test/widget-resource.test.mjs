@@ -8,7 +8,7 @@ test("host bridge fails closed when model-context updates are unavailable", () =
     html: "<!doctype html><html><head></head><body><script>/* __VISUAL_WORKSPACE_JS__ */</script></body></html>",
     css: "body {}",
     js: "",
-    appVersion: "0.2.1",
+    appVersion: "0.2.2",
   });
 
   assert.match(document, /typeof app\.updateModelContext !== "function"/);

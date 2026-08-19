@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, mkdir, realpath, rm, symlink, truncate, writeFile } from "node:fs/promises";
+import { execFile as execFileCallback } from "node:child_process";
+import { chmod, mkdtemp, mkdir, readFile, realpath, rename as fsRename, rm, symlink, truncate, utimes, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import test from "node:test";
+
+const execFile = promisify(execFileCallback);
 
 const temporary = await mkdtemp(path.join(os.tmpdir(), "visual-workspace-store-test-"));
 process.env.CODEX_WORKSPACE_ENHANCER_STATE_ROOT = path.join(temporary, "state");
@@ -29,6 +33,113 @@ test("project registration is explicit and rejects broad roots", async () => {
   assert.match(registered.workspaceId, /^[a-f0-9]{24}$/);
   await assert.doesNotReject(store.assertWorkspaceAllowed(registered.workspaceId, [project]));
   await assert.rejects(store.assertWorkspaceAllowed(registered.workspaceId, [path.join(temporary, "elsewhere")]), /outside the roots approved/);
+});
+
+test("one approved Git project reopens its linked Codex worktrees without another click", async () => {
+  assert.equal(typeof store.reopenApprovedWorkspace, "function", "approved Git-worktree lookup is missing");
+  const project = await fixture("approved-git-project");
+  await execFile("git", ["init", "-b", "main", project]);
+  await execFile("git", ["-C", project, "config", "user.email", "visual-workspace@example.invalid"]);
+  await execFile("git", ["-C", project, "config", "user.name", "Visual Workspace QA"]);
+  await execFile("git", ["-C", project, "add", "."]);
+  await execFile("git", ["-C", project, "commit", "-m", "fixture"]);
+  const linkedWorktree = path.join(temporary, "approved-git-worktree");
+  await execFile("git", ["-C", project, "worktree", "add", "-b", "visual-workspace-test", linkedWorktree]);
+
+  assert.equal(await store.reopenApprovedWorkspace(linkedWorktree), null);
+  await store.registerWorkspace({ projectDir: project, confirmProjectAccess: true, allowedRoots: [project], approvalSource: "host-root" });
+  assert.equal(await store.reopenApprovedWorkspace(project), null);
+  assert.equal(await store.reopenApprovedWorkspace(linkedWorktree), null);
+  await store.registerWorkspace({ projectDir: project, confirmProjectAccess: true, allowedRoots: [project], approvalSource: "widget-approval" });
+  const reopened = await store.reopenApprovedWorkspace(linkedWorktree);
+  assert.equal(reopened.projectRoot, await realpath(linkedWorktree));
+  await assert.doesNotReject(store.resolveWorkspace(reopened.workspaceId));
+
+  const unrelated = await fixture("unrelated-git-project");
+  await execFile("git", ["init", "-b", "main", unrelated]);
+  assert.equal(await store.reopenApprovedWorkspace(unrelated), null);
+});
+
+test("pending project access survives a server restart and remains single-use", async () => {
+  assert.equal(typeof store.rememberProjectAccessRequest, "function", "durable access-request storage is missing");
+  assert.equal(typeof store.consumeProjectAccessRequest, "function", "durable access-request consumption is missing");
+  const project = await fixture("durable-consent");
+  const accessRequestId = "r".repeat(43);
+  await store.rememberProjectAccessRequest({ accessRequestId, projectDir: project });
+
+  const reloadedStore = await import(`../mcp/lib/workspace-store.mjs?restart=${Date.now()}`);
+  const results = await Promise.allSettled([
+    store.consumeProjectAccessRequest(accessRequestId),
+    reloadedStore.consumeProjectAccessRequest(accessRequestId),
+  ]);
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+  assert.equal(results.find((result) => result.status === "fulfilled")?.value, await realpath(project));
+  await assert.rejects(reloadedStore.consumeProjectAccessRequest(accessRequestId), /expired/);
+
+  const expiredRequestId = "e".repeat(43);
+  await store.rememberProjectAccessRequest({ accessRequestId: expiredRequestId, projectDir: project });
+  const requestFile = path.join(process.env.CODEX_WORKSPACE_ENHANCER_STATE_ROOT, "access-requests.json");
+  const requestState = JSON.parse(await readFile(requestFile, "utf8"));
+  requestState.requests.find((request) => request.accessRequestId === expiredRequestId).expiresAt = 0;
+  await writeFile(requestFile, `${JSON.stringify(requestState)}\n`);
+  await assert.rejects(reloadedStore.consumeProjectAccessRequest(expiredRequestId), /expired/);
+  await assert.rejects(store.rememberProjectAccessRequest({ accessRequestId: "short", projectDir: project }), /Invalid/);
+
+  const retryableRequestId = "t".repeat(43);
+  await store.rememberProjectAccessRequest({ accessRequestId: retryableRequestId, projectDir: project });
+  const unavailableProject = `${project}.temporarily-unavailable`;
+  await fsRename(project, unavailableProject);
+  try {
+    await assert.rejects(store.consumeProjectAccessRequest(retryableRequestId), /ENOENT/);
+  } finally {
+    await fsRename(unavailableProject, project);
+  }
+  assert.equal(await store.consumeProjectAccessRequest(retryableRequestId), await realpath(project));
+});
+
+test("pending project access is consumed once across independent processes and recovers an abandoned claim", async () => {
+  const project = await fixture("cross-process-consent");
+  const accessRequestId = "p".repeat(43);
+  await store.rememberProjectAccessRequest({ accessRequestId, projectDir: project });
+  const moduleUrl = new URL("../mcp/lib/workspace-store.mjs", import.meta.url).href;
+  const childScript = `
+    import { consumeProjectAccessRequest } from ${JSON.stringify(moduleUrl)};
+    const result = await consumeProjectAccessRequest(${JSON.stringify(accessRequestId)});
+    process.stdout.write(result);
+  `;
+  const consumers = await Promise.allSettled([
+    execFile("node", ["--input-type=module", "--eval", childScript], { env: { ...process.env } }),
+    execFile("node", ["--input-type=module", "--eval", childScript], { env: { ...process.env } }),
+  ]);
+  assert.equal(consumers.filter((result) => result.status === "fulfilled").length, 1);
+  assert.equal(consumers.find((result) => result.status === "fulfilled")?.value.stdout, await realpath(project));
+
+  const abandonedRequestId = "a".repeat(43);
+  await store.rememberProjectAccessRequest({ accessRequestId: abandonedRequestId, projectDir: project });
+  const stateRoot = process.env.CODEX_WORKSPACE_ENHANCER_STATE_ROOT;
+  const stateFile = path.join(stateRoot, "access-requests.json");
+  const abandonedClaim = path.join(stateRoot, ".access-requests.claim-2147483647-00000000-0000-4000-8000-000000000000.json");
+  await fsRename(stateFile, abandonedClaim);
+  const staleTime = new Date(Date.now() - 31_000);
+  await utimes(abandonedClaim, staleTime, staleTime);
+  assert.equal(await store.consumeProjectAccessRequest(abandonedRequestId), await realpath(project));
+});
+
+test("widget approval keeps its request retryable until catalog registration commits", async () => {
+  assert.equal(typeof store.approveProjectAccessRequest, "function", "transactional widget approval is missing");
+  const project = await fixture("approval-transaction");
+  const accessRequestId = "w".repeat(43);
+  await store.rememberProjectAccessRequest({ accessRequestId, projectDir: project });
+  const catalogFile = path.join(process.env.CODEX_WORKSPACE_ENHANCER_STATE_ROOT, "workspaces.json");
+  const catalogBefore = await readFile(catalogFile, "utf8");
+  await writeFile(catalogFile, "{invalid json\n");
+  try {
+    await assert.rejects(store.approveProjectAccessRequest(accessRequestId), /invalid/);
+  } finally {
+    await writeFile(catalogFile, catalogBefore);
+  }
+  const approved = await store.approveProjectAccessRequest(accessRequestId);
+  assert.equal(approved.projectRoot, await realpath(project));
 });
 
 test("scanner skips symlink escapes and preview rejects traversal", async () => {

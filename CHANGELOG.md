@@ -2,6 +2,21 @@
 
 All notable public changes are documented here. Versions follow Semantic Versioning for the native plugin.
 
+## [0.2.2] - 2026-08-19
+
+### Added
+
+- Reopen an approved exact path or a validated Codex worktree from the same Git repository without another confirmation click.
+- Persist fallback approval requests locally with a 12-hour TTL, a 512-record cap, atomic single-use consumption, and restart recovery.
+- Show expired consent state in the widget and disable stale approval buttons instead of surfacing a repeated server error.
+
+### Security
+
+- Keep first-time project approval anchored to a matching host root or an app-only user click; the model-visible open tool cannot self-grant an unrelated path.
+- Record approval provenance so task-scoped host roots cannot silently become reusable cross-task/worktree consent.
+- Validate worktree `.git` pointers, admin backlinks, common-directory containment, and repository identity before inheriting approval.
+- Keep project paths and session capabilities out of model-visible structured output on both reopened and fallback authorization paths.
+
 ## [0.2.1] - 2026-08-19
 
 ### Fixed

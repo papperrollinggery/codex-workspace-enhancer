@@ -4,7 +4,7 @@
 
 Canonical repository: https://github.com/papperrollinggery/codex-workspace-enhancer
 
-The preferred native plugin uses an stdio MCP server and a sandboxed `ui://` view. It scans project images read-only after exact-path approval, stores revisioned canvas state in user application data, and attaches selected paths as structured conversation context without automatically sending a message. Fullscreen is requested but always decided by the Codex host.
+The preferred native plugin uses an stdio MCP server and a sandboxed `ui://` view. It scans project images read-only after a matching host root or one-time exact-path in-widget approval. An approved path and validated Codex worktrees linked to the same Git repository reopen directly without repeated approval clicks. Pending first-approval requests survive normal MCP server restarts for up to 12 hours. It stores revisioned canvas state in user application data and attaches selected paths as structured conversation context without automatically sending a message. Fullscreen is requested but always decided by the Codex host.
 
 ## Documentation
 

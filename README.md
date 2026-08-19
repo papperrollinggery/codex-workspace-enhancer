@@ -40,21 +40,22 @@ codex plugin add codex-workspace-enhancer@codex-workspace-enhancer
 Open a **new Codex task** after installation so the host loads the plugin, composer icon, skill, and MCP tools. Then ask:
 
 ```text
-Open the native visual workspace for this project.
+Open the native visual workspace for this project directly. Do not ask me to confirm the same project again in the widget.
 ```
 
-If Codex does not provide workspace roots, the widget shows the exact project path and waits for an explicit in-widget approval before scanning images.
+The first time an unrelated project is opened without a matching host root, the widget shows its exact path for one approval click. After that, Codex can reopen the approved path directly, including validated Codex worktrees linked to the same Git repository, without another click. Pending first-approval requests are stored locally for up to 12 hours so a normal MCP server restart does not leave a visible but dead button.
 
 ## Safety and privacy model
 
 | Boundary | Behavior |
 |---|---|
-| Project access | Exact-path approval or a matching host-provided workspace root |
+| Project access | One-time in-widget exact-path approval, validated worktree inheritance from that approval, or a matching host-provided root for the current task |
 | Source images | Read-only; canvas removal never deletes or moves the file |
 | Paths | Realpath containment checks and symlink escape rejection |
 | Preview loading | 12 MB per image, three concurrent reads, bounded LRU object-URL cache |
 | Project scanning | Skips hidden/build/dependency folders; at most 600 images, 7 levels, 20,000 entries, or 3.5 seconds |
-| Session access | Opaque in-memory capability; 2-hour idle and 12-hour absolute expiry |
+| Pending approval | Opaque, atomically single-use local request; 12-hour expiry and a 512-request bound |
+| Session access | Opaque model-hidden in-memory capability; 2-hour idle and 12-hour absolute expiry |
 | Canvas state | Approved absolute project root plus revisioned canvas JSON in the user's application-data directory; no upload |
 | Conversation handoff | Structured context only; the user still sends the next message |
 | Network | No listening socket for native-plugin features |
@@ -118,7 +119,7 @@ For deterministic machine-readable context, use [llms.txt](llms.txt). `llms.txt`
 
 ## Project status
 
-The native plugin has automated source, protocol, security, standalone-release, and browser interaction coverage. Installed-host behavior remains version-specific: verify the composer entry, in-widget approval, and actual display receipt after each Codex or plugin update.
+The native plugin has automated source, protocol, security, standalone-release, and browser interaction coverage. Installed-host behavior remains version-specific: verify the composer entry, one-time approval followed by direct reopening from the same repository/worktree family, and the actual display receipt after each Codex or plugin update.
 
 ## Contributing and license
 
