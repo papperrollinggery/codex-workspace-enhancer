@@ -12,6 +12,7 @@ All notable public changes are documented here. Versions follow Semantic Version
 - Pin the MCP Apps package whose internal browser-bundle footer is parsed during release builds.
 - Rebuild the legacy Windows ZIP deterministically from adjacent source and verify all 36 archive entries for byte equality.
 - Replace unreproducible legacy verification numbers with repository-runnable checks.
+- Reuse GitHub's preinstalled Chrome for browser QA instead of downloading a duplicate Playwright browser on every CI run.
 
 ## [0.2.0] - 2026-08-19
 

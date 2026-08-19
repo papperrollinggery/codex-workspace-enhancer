@@ -146,8 +146,12 @@ try {
   backend.stderr.on("data", (chunk) => { backendError += chunk.toString(); });
   await waitForServer();
 
-  const chromePath = process.env.CHROME_PATH
-    || (process.platform === "darwin" ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" : "");
+  const chromePath = [
+    process.env.CHROME_PATH,
+    process.platform === "darwin" ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" : "",
+    process.platform === "linux" ? "/usr/bin/google-chrome" : "",
+    process.platform === "linux" ? "/usr/bin/google-chrome-stable" : "",
+  ].find((candidate) => candidate && existsSync(candidate)) || "";
   browser = await chromium.launch({
     headless: true,
     ...(chromePath && existsSync(chromePath) ? { executablePath: chromePath } : {}),

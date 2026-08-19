@@ -17,6 +17,8 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      CHROME_PATH: /usr/bin/google-chrome
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -31,8 +33,8 @@ jobs:
       - name: Install native plugin dependencies
         run: npm --prefix plugin/codex-workspace-enhancer ci
 
-      - name: Install Playwright Chromium
-        run: npx --prefix plugin/codex-workspace-enhancer playwright install --with-deps chromium
+      - name: Verify hosted Chrome
+        run: "$CHROME_PATH" --version
 
       - name: Audit production dependencies
         run: npm --prefix plugin/codex-workspace-enhancer audit --omit=dev --audit-level=high
