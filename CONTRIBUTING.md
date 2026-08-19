@@ -9,7 +9,7 @@ npm run setup
 npm run quality
 ```
 
-Node.js 20 or newer is required. Browser QA reuses `CHROME_PATH` or the standard macOS Chrome location when available; otherwise install Playwright Chromium with `npx playwright install chromium`.
+Node.js 20 or newer is required for the native plugin; optional legacy-adapter development requires Node.js 22 or newer. Browser QA reuses `CHROME_PATH` or the standard macOS Chrome location when available; otherwise install Playwright Chromium with `npx playwright install chromium`.
 
 ## Change rules
 
@@ -20,6 +20,8 @@ Node.js 20 or newer is required. Browser QA reuses `CHROME_PATH` or the standard
 - Add a regression test for bug fixes when practical.
 - Do not commit `node_modules`, local state, tokens, project assets, or DeepSeek collaboration files.
 - Rebuild and commit `plugin/codex-workspace-enhancer/dist/` when native server dependencies or source change.
+- Rebuild and commit the deterministic legacy Windows archive with `npm run build:windows-bundle` whenever a listed enhancer payload changes.
+- A Dependabot dependency PR is expected to fail the generated-release gate until a maintainer rebuilds and commits `dist/`; do not bypass that gate.
 
 ## Pull requests
 

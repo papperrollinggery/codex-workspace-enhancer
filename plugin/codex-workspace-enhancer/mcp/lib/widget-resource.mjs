@@ -149,7 +149,14 @@ function hostBridgeScript(appVersion) {
     };
     api.updateModelContext = async (payload) => {
       await ready();
-      return app.updateModelContext?.(payload) || {};
+      if (typeof app.updateModelContext !== "function") {
+        throw new Error("The Codex host does not support adding Visual Workspace selections to model context");
+      }
+      return withTimeout(
+        Promise.resolve(app.updateModelContext(payload)),
+        10000,
+        "Codex host did not accept the Visual Workspace selection context",
+      );
     };
     api.onTeardown = (handler) => {
       if (typeof handler !== "function") throw new Error("Teardown handler must be a function");

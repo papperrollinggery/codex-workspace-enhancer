@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex Workspace Enhancer"
-  short_description: "Improve Codex task recall and embedded local asset workflows."
-  default_prompt: "Use $codex-workspace-enhancer to audit, install, or improve my Codex sidebar and embedded Asset Console workflow."
+  short_description: "Open a native, port-free visual workspace for approved project images."
+  default_prompt: "Use $codex-workspace-enhancer to open or improve the native Visual Workspace for my current Codex project."

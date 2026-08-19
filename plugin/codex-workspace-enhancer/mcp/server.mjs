@@ -182,7 +182,7 @@ registerAppTool(server, "open_visual_workspace", {
 
 server.registerTool("report_visual_workspace_display_state", {
   title: "Report Visual Workspace Display State",
-  description: "Record the display mode actually granted by the Codex host. This app-only diagnostic contains no project path or access token.",
+  description: "Record the initial, one-shot display mode reported after Visual Workspace opens. This app-only diagnostic contains no project path or access token.",
   inputSchema: {
     displayReceiptId: displayReceiptIdSchema,
     requestedMode: displayModeSchema,
@@ -238,7 +238,7 @@ server.registerTool("report_visual_workspace_display_state", {
 
 server.registerTool("get_visual_workspace_display_receipt", {
   title: "Get Visual Workspace Display Receipt",
-  description: "Read the host-negotiated display-mode result for a Visual Workspace opened in this task.",
+  description: "Read the initial, one-shot host-negotiated display-mode result for a Visual Workspace opened in this task.",
   inputSchema: { displayReceiptId: displayReceiptIdSchema },
   annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   _meta: { ui: { visibility: ["model"] } },

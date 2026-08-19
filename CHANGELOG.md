@@ -2,6 +2,17 @@
 
 All notable public changes are documented here. Versions follow Semantic Versioning for the native plugin.
 
+## [0.2.1] - 2026-08-19
+
+### Fixed
+
+- Fail closed instead of claiming a selection was attached when the Codex host lacks model-context support.
+- Preserve bounded scanning when a directory disappears or becomes unreadable during iteration, and enforce the 20,000-entry cap globally.
+- Prevent an operation-level `EEXIST` from being misclassified as file-lock contention and retried.
+- Pin the MCP Apps package whose internal browser-bundle footer is parsed during release builds.
+- Rebuild the legacy Windows ZIP deterministically from adjacent source and verify all 36 archive entries for byte equality.
+- Replace unreproducible legacy verification numbers with repository-runnable checks.
+
 ## [0.2.0] - 2026-08-19
 
 ### Added

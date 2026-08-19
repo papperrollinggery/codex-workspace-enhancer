@@ -1,6 +1,6 @@
 {
   "name": "codex-workspace-enhancer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "A native, port-free Codex MCP App for arranging project images and creative notes on an infinite canvas.",
   "license": "MIT",
@@ -34,7 +34,7 @@
     "quality": "npm run check && npm test && npm run probe:mcp && npm run build && npm run verify:release && npm run verify:widget"
   },
   "dependencies": {
-    "@modelcontextprotocol/ext-apps": "^1.7.5",
+    "@modelcontextprotocol/ext-apps": "1.7.5",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^4.4.3"
   },

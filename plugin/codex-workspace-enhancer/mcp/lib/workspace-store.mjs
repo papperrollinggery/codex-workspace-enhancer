@@ -86,16 +86,7 @@ async function withFileLock(name, operation) {
     let handle;
     try {
       handle = await fs.open(lockFile, fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY, 0o600);
-      await handle.writeFile(JSON.stringify({ pid: process.pid, token, createdAt: Date.now() }));
-      await handle.close();
-      try {
-        return await operation();
-      } finally {
-        const owner = await readJson(lockFile, null).catch(() => null);
-        if (owner?.token === token) await fs.rm(lockFile, { force: true }).catch(() => {});
-      }
     } catch (error) {
-      await handle?.close().catch(() => {});
       if (error?.code !== "EEXIST") throw error;
       const owner = await readJson(lockFile, null).catch(() => null);
       const ownerAlive = Number.isInteger(owner?.pid) && owner.pid > 0
@@ -110,6 +101,22 @@ async function withFileLock(name, operation) {
       }
       if (Date.now() >= deadline) throw new Error("Visual Workspace state is busy; retry the action");
       await sleep(80);
+      continue;
+    }
+    try {
+      await handle.writeFile(JSON.stringify({ pid: process.pid, token, createdAt: Date.now() }));
+      await handle.close();
+    } catch (error) {
+      await handle?.close().catch(() => {});
+      const owner = await readJson(lockFile, null).catch(() => null);
+      if (owner?.token === token) await fs.rm(lockFile, { force: true }).catch(() => {});
+      throw error;
+    }
+    try {
+      return await operation();
+    } finally {
+      const owner = await readJson(lockFile, null).catch(() => null);
+      if (owner?.token === token) await fs.rm(lockFile, { force: true }).catch(() => {});
     }
   }
 }
@@ -267,7 +274,7 @@ export async function scanWorkspaceAssets(workspaceId) {
   let visitedEntries = 0;
 
   async function walk(directory, depth) {
-    if (assets.length >= MAX_ASSETS || Date.now() - startedAt >= MAX_SCAN_MS) {
+    if (assets.length >= MAX_ASSETS || visitedEntries > MAX_SCAN_ENTRIES || Date.now() - startedAt >= MAX_SCAN_MS) {
       truncated = true;
       return;
     }
@@ -285,38 +292,46 @@ export async function scanWorkspaceAssets(workspaceId) {
       }
       throw error;
     }
-    for await (const entry of entries) {
-      visitedEntries += 1;
-      if (visitedEntries > MAX_SCAN_ENTRIES) {
+    try {
+      for await (const entry of entries) {
+        visitedEntries += 1;
+        if (visitedEntries > MAX_SCAN_ENTRIES) {
+          truncated = true;
+          return;
+        }
+        if (assets.length >= MAX_ASSETS || Date.now() - startedAt >= MAX_SCAN_MS) {
+          truncated = true;
+          return;
+        }
+        if (entry.isSymbolicLink()) continue;
+        if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+        const fullPath = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+          if (!SKIP_DIRECTORIES.has(entry.name)) await walk(fullPath, depth + 1);
+          continue;
+        }
+        if (!entry.isFile() || !IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) continue;
+        const real = await fs.realpath(fullPath).catch(() => null);
+        if (!real || !isContained(workspace.root, real)) continue;
+        const stats = await fs.stat(real).catch(() => null);
+        if (!stats?.isFile()) continue;
+        const relPath = path.relative(workspace.root, real).split(path.sep).join("/");
+        if (/[\u0000-\u001f\u007f]/u.test(relPath)) continue;
+        assets.push({
+          id: createHash("sha256").update(relPath).digest("hex").slice(0, 16),
+          relPath,
+          name: path.basename(real),
+          folder: path.dirname(relPath) === "." ? "" : path.dirname(relPath).split(path.sep).join("/"),
+          size: stats.size,
+          modifiedAt: stats.mtime.toISOString(),
+        });
+      }
+    } catch (error) {
+      if (["EACCES", "EPERM", "ENOENT"].includes(error?.code)) {
         truncated = true;
         return;
       }
-      if (assets.length >= MAX_ASSETS || Date.now() - startedAt >= MAX_SCAN_MS) {
-        truncated = true;
-        return;
-      }
-      if (entry.isSymbolicLink()) continue;
-      if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
-      const fullPath = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        if (!SKIP_DIRECTORIES.has(entry.name)) await walk(fullPath, depth + 1);
-        continue;
-      }
-      if (!entry.isFile() || !IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) continue;
-      const real = await fs.realpath(fullPath).catch(() => null);
-      if (!real || !isContained(workspace.root, real)) continue;
-      const stats = await fs.stat(real).catch(() => null);
-      if (!stats?.isFile()) continue;
-      const relPath = path.relative(workspace.root, real).split(path.sep).join("/");
-      if (/[\u0000-\u001f\u007f]/u.test(relPath)) continue;
-      assets.push({
-        id: createHash("sha256").update(relPath).digest("hex").slice(0, 16),
-        relPath,
-        name: path.basename(real),
-        folder: path.dirname(relPath) === "." ? "" : path.dirname(relPath).split(path.sep).join("/"),
-        size: stats.size,
-        modifiedAt: stats.mtime.toISOString(),
-      });
+      throw error;
     }
   }
 

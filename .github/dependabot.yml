@@ -13,3 +13,8 @@ updates:
         patterns:
           - "playwright"
           - "esbuild"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3

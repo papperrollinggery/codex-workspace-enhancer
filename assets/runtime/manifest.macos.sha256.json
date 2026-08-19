@@ -1,6 +1,6 @@
 {
   "format": "codex-workspace-enhancer-macos-v1",
-  "generatedAt": "2026-08-18T07:01:03.542Z",
+  "generatedAt": "2026-08-19T09:07:39.852Z",
   "files": [
     {
       "path": "asset-browser/asset-browser.config.example.json",
@@ -406,8 +406,8 @@
     },
     {
       "path": "enhancer/VERIFICATION.txt",
-      "sha256": "3439952b99942d22f4e1b60e266c59db003670bb7e9afa454a8f161c9dadb955",
-      "size": 5041,
+      "sha256": "e493a315998fe5303dfddd62b6aee3a10774b154b53029822283dc57bbdbb9eb",
+      "size": 1117,
       "executable": false
     },
     {

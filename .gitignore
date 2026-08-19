@@ -6,13 +6,13 @@ playwright-report/
 test-results/
 
 # Local DeepSeek Harness collaboration channel
-.dsh-delegation-history/
-SCOPE.md
-TASK.md
-RESULT.md
-OPINION.md
-ASK.md
-STATUS.json
+/.dsh-delegation-history/
+/SCOPE.md
+/TASK.md
+/RESULT.md
+/OPINION.md
+/ASK.md
+/STATUS.json
 
 # Local runtime state, tokens, logs, and temporary files
 .env

@@ -10,6 +10,8 @@
 
 ![Codex Workspace Enhancer native visual canvas](plugin/codex-workspace-enhancer/artifacts/native-visual-workspace-light.png)
 
+_Automated QA render against a mock MCP Apps host; installed-host appearance can vary by Codex version._
+
 ## What it solves
 
 Creative work in Codex often spans reference images, generated frames, notes, and repeated comparison. Codex Workspace Enhancer keeps that visual context inside the current conversation:
@@ -81,7 +83,7 @@ npx playwright install chromium
 npm run quality
 ```
 
-The release build commits `plugin/codex-workspace-enhancer/dist/server.mjs`, so a Git Marketplace installation does not depend on running `npm install` inside Codex's plugin cache.
+The release build commits `plugin/codex-workspace-enhancer/dist/server.mjs`, so a Git Marketplace installation does not depend on running `npm install` inside Codex's plugin cache. The bundle needs no `node_modules`, but it still requires the surrounding plugin manifest and widget files.
 
 ## Repository map
 

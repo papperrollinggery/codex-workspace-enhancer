@@ -6,6 +6,8 @@
 
 ![Codex Workspace Enhancer 原生视觉画布](plugin/codex-workspace-enhancer/artifacts/native-visual-workspace-light.png)
 
+_这是基于模拟 MCP Apps 宿主生成的自动化 QA 画面；真实安装后的外观会随 Codex 版本变化。_
+
 ## 核心能力
 
 - 从 Codex 输入区的插件入口打开原生 MCP App。
@@ -18,7 +20,7 @@
 
 ## 安装
 
-需要支持 Plugin/MCP Apps 的 Codex，以及 Node.js 20 或更高版本。
+原生插件需要支持 Plugin/MCP Apps 的 Codex，以及 Node.js 20 或更高版本；可选 legacy 适配器需要 Node.js 22 或更高版本。
 
 ```bash
 codex plugin marketplace add papperrollinggery/codex-workspace-enhancer --ref main
