@@ -294,6 +294,7 @@ DOMAIN="gui/$(/usr/bin/id -u)"
 SERVICE="\${DOMAIN}/${plan.label}"
 PLIST=${JSON.stringify(plan.plistPath)}
 OWNED_WINDOW_MARKER=${JSON.stringify(enhancedWindowMarker(plan.label))}
+PROFILE_DIR=${JSON.stringify(path.join(plan.stateDir, "EnhancedProfile"))}
 
 start_injector() {
   /bin/launchctl bootstrap "\${DOMAIN}" "\${PLIST}" >/dev/null 2>&1 || true
@@ -343,7 +344,10 @@ if /usr/bin/curl -fsS --max-time 1 "http://127.0.0.1:\${PORT}/json" >/dev/null 2
   exit 0
 fi
 
+/bin/mkdir -p "\${PROFILE_DIR}"
+/bin/chmod 700 "\${PROFILE_DIR}"
 /usr/bin/open -na "\${APP_PATH}" --args \\
+  "--user-data-dir=\${PROFILE_DIR}" \\
   "--remote-debugging-address=127.0.0.1" \\
   "--remote-debugging-port=\${PORT}" \\
   "--remote-allow-origins=http://127.0.0.1:\${PORT}" \\

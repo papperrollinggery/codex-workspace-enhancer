@@ -1,6 +1,6 @@
 {
   "format": "codex-workspace-enhancer-macos-v1",
-  "generatedAt": "2026-08-19T13:46:40.376Z",
+  "generatedAt": "2026-08-19T13:48:08.597Z",
   "files": [
     {
       "path": "asset-browser/asset-browser.config.example.json",
@@ -220,8 +220,8 @@
     },
     {
       "path": "enhancer/lib/install-config.mjs",
-      "sha256": "0a2db6433b868158227fa08f4d4e4fae344a34ec40bf031a0ed75760c13c93ef",
-      "size": 12269,
+      "sha256": "e797196a9b3290030e78181398026f273c87891d2732ab6743a201a51a7f1e98",
+      "size": 12448,
       "executable": false
     },
     {
@@ -448,8 +448,8 @@
     },
     {
       "path": "enhancer/test/install-macos.test.mjs",
-      "sha256": "2dd3cdc68d8a356f9029dd1dff9c128830738409c4c74d445094d5386bf8a95e",
-      "size": 13754,
+      "sha256": "0eebe58834d7797d6cb1cfa7459b9123f19fb5ea80c4aa3c24e93aec7f01cde8",
+      "size": 13828,
       "executable": false
     },
     {

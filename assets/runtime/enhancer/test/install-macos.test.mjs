@@ -74,6 +74,7 @@ test("launcher supports ChatGPT and Codex without an automatic restart", () => {
   assert.match(plan.launcherScript, /\/Applications\/ChatGPT\.app/);
   assert.match(plan.launcherScript, /\/Applications\/Codex\.app/);
   assert.match(plan.launcherScript, /--remote-debugging-address=127\.0\.0\.1/);
+  assert.match(plan.launcherScript, /--user-data-dir=\$\{PROFILE_DIR\}/);
   assert.match(plan.launcherScript, /安装器不会自动重启它/);
   assert.doesNotMatch(plan.launcherScript, /tell application.*to quit/s);
   assert.match(plan.launcherScript, /--mode enhanced-window/);
