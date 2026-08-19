@@ -8,6 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const injection = await readFile(path.join(root, "inject", "conversation-preview.user.js"), "utf8");
 const injector = await readFile(path.join(root, "scripts", "injector.mjs"), "utf8");
 const assetConsoleApp = await readFile(path.join(root, "asset-console", "public", "app.js"), "utf8");
+const workspacePanelApp = await readFile(path.join(root, "panel", "public", "panel.js"), "utf8");
 
 test("native injection owns and cleans up a right-side tool rail", () => {
   assert.match(injection, /const WORKSPACE_TOOL_RAIL_ID = "codex-workspace-tool-rail"/u);
@@ -64,4 +65,6 @@ test("right rail exposes the native workspace panel as a first-class macOS surfa
   assert.match(injection, /function setWorkspacePanelFrame\(/u);
   assert.match(injection, /setWorkspacePanel,/u);
   assert.match(injection, /setWorkspacePanelFrame,/u);
+  assert.match(workspacePanelApp, /source: "workspace-panel", action: "close"/u);
+  assert.match(injection, /message\?\.source === "workspace-panel" && message\.action === "close"/u);
 });

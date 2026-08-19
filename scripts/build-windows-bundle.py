@@ -27,8 +27,18 @@ WINDOWS_ARCHIVE_PATHS = (
     "lib/home-projects.mjs",
     "lib/injector-state.mjs",
     "lib/install-config.mjs",
+    "lib/mcp-stdio-client.mjs",
+    "lib/native-workspace-client.mjs",
+    "lib/panel-context.mjs",
+    "lib/panel-module-registry.mjs",
     "lib/preview-data.mjs",
     "lib/usage-data.mjs",
+    "lib/workspace-panel-bridge.mjs",
+    "lib/workspace-panel-embed.mjs",
+    "panel/public/index.html",
+    "panel/public/module-registry.mjs",
+    "panel/public/panel.css",
+    "panel/public/panel.js",
     "scripts/cdp-client.mjs",
     "scripts/injector.mjs",
     "scripts/inspect-hover.mjs",
@@ -79,18 +89,13 @@ def archive_bytes() -> bytes:
 def expected_manifest(archive_body: bytes) -> dict[str, object]:
     current = json.loads(MANIFEST.read_text(encoding="utf-8-sig"))
     entries = []
-    expected_enhancer = {f"enhancer/{relative}" for relative in WINDOWS_ARCHIVE_PATHS}
-    manifest_enhancer = {
+    asset_paths = {
         str(entry.get("path"))
         for entry in current.get("files", [])
-        if str(entry.get("path", "")).startswith("enhancer/")
+        if str(entry.get("path", "")).startswith("asset-browser/")
     }
-    if manifest_enhancer != expected_enhancer:
-        missing = sorted(expected_enhancer - manifest_enhancer)
-        extra = sorted(manifest_enhancer - expected_enhancer)
-        raise SystemExit(f"Windows manifest/source list mismatch; missing={missing}, extra={extra}")
-    for entry in current.get("files", []):
-        relative = str(entry.get("path", ""))
+    all_paths = sorted({f"enhancer/{relative}" for relative in WINDOWS_ARCHIVE_PATHS} | asset_paths)
+    for relative in all_paths:
         source = RUNTIME / relative
         if not source.is_file():
             raise SystemExit(f"missing runtime manifest source: {relative}")

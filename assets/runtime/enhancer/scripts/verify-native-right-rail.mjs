@@ -14,6 +14,7 @@ try {
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const injection = await readFile(path.join(root, "inject", "conversation-preview.user.js"), "utf8");
+const panelRoot = path.join(root, "panel", "public");
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: "dark" });
 const cdp = await page.context().newCDPSession(page);
@@ -47,10 +48,36 @@ try {
     contentType: "text/html; charset=utf-8",
     body: mockHost,
   }));
-  await page.route("https://web-sandbox.oaiusercontent.com/**", (route) => route.fulfill({
-    status: 200,
-    contentType: "text/html; charset=utf-8",
-    body: `<!doctype html><html><body data-view="grid"><button id="show-grid">Grid</button><button id="show-canvas">Canvas</button><script>
+  await page.route("https://web-sandbox.oaiusercontent.com/**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.startsWith("/workspace-panel-test/")) {
+      const relative = url.pathname.slice("/workspace-panel-test/".length);
+      const staticFiles = {
+        "": ["index.html", "text/html; charset=utf-8"],
+        "index.html": ["index.html", "text/html; charset=utf-8"],
+        "panel.js": ["panel.js", "text/javascript; charset=utf-8"],
+        "panel.css": ["panel.css", "text/css; charset=utf-8"],
+        "module-registry.mjs": ["module-registry.mjs", "text/javascript; charset=utf-8"],
+      };
+      if (staticFiles[relative]) {
+        const [name, contentType] = staticFiles[relative];
+        return route.fulfill({ status: 200, contentType, body: await readFile(path.join(panelRoot, name), "utf8") });
+      }
+      const apiPayloads = {
+        "api/status": { version: "0.3.0", bridgeState: "ready", threadId: "mock-thread", threadTitle: "面板验收", projectDir: "/tmp/project", projectName: "Workspace Panel", accessState: "approved", authorizationSource: "host-root" },
+        "api/workspace": { assets: [{ name: "frame-01.png", folder: "references" }], board: { rev: 3, nodes: [{ id: "node-1" }], selectedIds: [] }, truncated: false },
+        "api/tasks": { tasks: [{ threadId: "mock-thread", title: "面板验收", status: "current" }] },
+        "api/changes": { branch: "feat/panel", dirtyCount: 2, ahead: 1, behind: 0, paths: ["panel.js", "panel.css"] },
+        "api/tools": { tools: [{ id: "review", label: "Review", available: true, action: "native-route" }] },
+      };
+      if (relative === "api/tools/action") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ action: "composer-prefilled", sent: false }) });
+      if (apiPayloads[relative]) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiPayloads[relative]) });
+      return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "not found" }) });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: `<!doctype html><html><body data-view="grid"><button id="show-grid">Grid</button><button id="show-canvas">Canvas</button><script>
       const setView = (view) => {
         document.body.dataset.view = view;
         window.parent.postMessage({ source: "asset-console", action: "view-changed", view }, "*");
@@ -61,10 +88,12 @@ try {
       document.querySelector("#show-grid").onclick = () => setView("grid");
       document.querySelector("#show-canvas").onclick = () => setView("canvas");
     <\/script></body></html>`,
-  }));
+    });
+  });
   await page.goto("https://codex.local/");
   await page.evaluate(() => {
     window.__assetActions = [];
+    window.__workspaceActions = [];
     window.__pluginClicks = 0;
     document.querySelector(".native-plugin").addEventListener("click", () => { window.__pluginClicks += 1; });
     window.codexSidebarOpenAssetConsole = (payload) => {
@@ -77,6 +106,17 @@ try {
         }), 0);
       }
     };
+    window.codexWorkspacePanel = (payload) => {
+      const action = JSON.parse(payload);
+      window.__workspaceActions.push(action);
+      if (action.action === "open") {
+        setTimeout(() => window.__codexConversationPreviewInjection__.setWorkspacePanelFrame({
+          state: "ready",
+          url: "https://web-sandbox.oaiusercontent.com/workspace-panel-test/",
+          accessState: "approved",
+        }), 0);
+      }
+    };
   });
   await page.evaluate(injection);
   await page.evaluate(() => {
@@ -85,8 +125,13 @@ try {
       label: "资产控制台",
       mode: "embedded",
     });
+    window.__codexConversationPreviewInjection__.setWorkspacePanel({
+      available: true,
+      label: "工作面板",
+      mode: "native-mcp",
+    });
   });
-  await page.waitForSelector("#codex-workspace-tool-rail [data-codex-workspace-tool='canvas']");
+  await page.waitForSelector("#codex-workspace-tool-rail [data-codex-workspace-tool='workspace']");
 
   const initial = await page.evaluate(() => {
     const rail = document.querySelector("#codex-workspace-tool-rail");
@@ -98,17 +143,36 @@ try {
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
-  assert.deepEqual(initial.labels, ["资产库", "空间画布", "插件与 Skill"]);
+  assert.deepEqual(initial.labels, ["工作面板", "资产库", "空间画布", "插件与 Skill"]);
   assert.equal(initial.rail.width, 48);
   assert.ok(initial.buttonRects.every((rect) => rect.width >= 40 && rect.height >= 40));
   assert.equal(initial.overflow, 0);
-  assert.deepEqual(await page.locator("#codex-workspace-tool-rail button").evaluateAll((buttons) => buttons.map((button) => button.tabIndex)), [0, -1, -1]);
+  assert.deepEqual(await page.locator("#codex-workspace-tool-rail button").evaluateAll((buttons) => buttons.map((button) => button.tabIndex)), [0, -1, -1, -1]);
   assert.equal(await page.getAttribute("[data-codex-workspace-tool='skills']", "aria-pressed"), null);
+
+  await page.click("[data-codex-workspace-tool='workspace']");
+  await page.waitForSelector("#codex-asset-console-panel[data-panel-kind='workspace'] iframe");
+  const workspaceFrame = page.frameLocator("#codex-asset-console-frame");
+  await workspaceFrame.locator("#panelTitle").filter({ hasText: "Workspace Panel" }).waitFor();
+  assert.deepEqual(
+    await workspaceFrame.locator("#panelTabs button").allTextContents(),
+    ["总览", "资产", "画布", "任务", "变更", "工具"],
+  );
+  await workspaceFrame.getByRole("tab", { name: "变更" }).click();
+  await workspaceFrame.getByText("feat/panel").waitFor();
+  await workspaceFrame.getByRole("tab", { name: "工具" }).click();
+  await workspaceFrame.getByRole("button", { name: "在 Codex 中打开" }).click();
+  await workspaceFrame.getByText("尚未发送").waitFor();
+  assert.equal(await page.getAttribute("[data-codex-workspace-tool='workspace']", "aria-pressed"), "true");
+  assert.equal(await page.evaluate(() => window.__workspaceActions.at(-1)?.panel), "workspace");
+  await page.screenshot({ path: "/tmp/codex-workspace-panel-dark.png" });
+  await workspaceFrame.locator("body").press("Escape");
+  await page.waitForSelector("#codex-asset-console-panel", { state: "detached" });
 
   await page.locator("[data-codex-workspace-tool='grid']").focus();
   await page.keyboard.press("ArrowDown");
   assert.equal(await page.evaluate(() => document.activeElement?.dataset.codexWorkspaceTool), "canvas");
-  assert.deepEqual(await page.locator("#codex-workspace-tool-rail button").evaluateAll((buttons) => buttons.map((button) => button.tabIndex)), [-1, 0, -1]);
+  assert.deepEqual(await page.locator("#codex-workspace-tool-rail button").evaluateAll((buttons) => buttons.map((button) => button.tabIndex)), [-1, -1, 0, -1]);
 
   await page.click("[data-codex-workspace-tool='canvas']");
   const assetFrame = page.frameLocator("#codex-asset-console-frame");
@@ -269,7 +333,7 @@ try {
     tools: initial.labels,
     panelWidth: resized.width,
     minimumTarget: 40,
-    screenshots: ["/tmp/codex-native-right-rail-dark.png", "/tmp/codex-native-right-rail-light.png"],
+    screenshots: ["/tmp/codex-workspace-panel-dark.png", "/tmp/codex-native-right-rail-dark.png", "/tmp/codex-native-right-rail-light.png"],
     reduced,
     lifecycle: lifecycleMetrics,
     consoleErrors: consoleErrors.length,

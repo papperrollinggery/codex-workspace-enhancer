@@ -1,6 +1,6 @@
 {
   "name": "codex-workspace-enhancer",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "A native, port-free Codex visual workspace for arranging project images, references, and creative notes on an infinite canvas.",
   "author": {
     "name": "papperrollinggery",
@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Visual Workspace",
     "shortDescription": "Arrange project images on a native infinite canvas.",
-    "longDescription": "Visual Workspace opens inside Codex as a native image canvas and requests fullscreen when the host supports it. Read approved project images without a localhost service, arrange references and generated work spatially, add notes, and attach the current selection as structured conversation context without auto-sending a message.",
+    "longDescription": "Visual Workspace opens inside Codex as a native image canvas with inline, fullscreen, and PiP negotiation. Read approved project images without a localhost service, arrange references and generated work spatially, add notes, and optionally use the macOS right-side workspace panel without auto-sending a message.",
     "developerName": "papperrollinggery",
     "category": "Productivity",
     "websiteURL": "https://github.com/papperrollinggery/codex-workspace-enhancer",
@@ -34,7 +34,8 @@
       "Infinite visual canvas",
       "Project image browser",
       "Project-local asset safety",
-      "No-auto-send conversation handoff"
+      "No-auto-send conversation handoff",
+      "Optional macOS workspace panel"
     ],
     "defaultPrompt": [
       "Open the native visual workspace for this project.",

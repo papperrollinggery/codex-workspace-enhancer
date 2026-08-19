@@ -1,6 +1,6 @@
 {
   "name": "codex-workspace-enhancer",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "private": true,
   "description": "A native, port-free Codex MCP App for arranging project images and creative notes on an infinite canvas.",
   "license": "MIT",

@@ -180,6 +180,11 @@ async function start() {
 }
 
 window.addEventListener("pagehide", () => void registry.destroyAll());
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  event.preventDefault();
+  window.parent.postMessage({ source: "workspace-panel", action: "close" }, "*");
+});
 void start().catch((error) => {
   elements.app.setAttribute("aria-busy", "false");
   elements.connection.textContent = "连接失败";

@@ -1,6 +1,6 @@
 {
   "format": "codex-workspace-enhancer-macos-v1",
-  "generatedAt": "2026-08-19T09:07:39.852Z",
+  "generatedAt": "2026-08-19T13:41:39.037Z",
   "files": [
     {
       "path": "asset-browser/asset-browser.config.example.json",
@@ -171,9 +171,15 @@
       "executable": false
     },
     {
+      "path": "enhancer/fixtures/fake-mcp-server.mjs",
+      "sha256": "e1dcdf736e27b32f8b625572febb35755d1069b52b4f9fb8d249e5df6e585ad3",
+      "size": 1147,
+      "executable": false
+    },
+    {
       "path": "enhancer/inject/conversation-preview.user.js",
-      "sha256": "d49afade9ece350817f096f4ea81874a83c2df0fbc31371c951f4b66a97d9cc2",
-      "size": 187959,
+      "sha256": "7a3f74ed02c7cc36e18fd51e0b738ac6b1d2fd8846cfe2c3bb32d313ed9fd996",
+      "size": 194623,
       "executable": false
     },
     {
@@ -214,8 +220,32 @@
     },
     {
       "path": "enhancer/lib/install-config.mjs",
-      "sha256": "2561bc5fd38763443bfb69b88097971712cdb3e83951d2cdaf8fa20d3c630a50",
-      "size": 10133,
+      "sha256": "0a2db6433b868158227fa08f4d4e4fae344a34ec40bf031a0ed75760c13c93ef",
+      "size": 12269,
+      "executable": false
+    },
+    {
+      "path": "enhancer/lib/mcp-stdio-client.mjs",
+      "sha256": "bfe18ce2aaa4d11eac73aab2b661dd8f48f3e64fa4ac8b2598b7325c13fc8b7d",
+      "size": 5605,
+      "executable": false
+    },
+    {
+      "path": "enhancer/lib/native-workspace-client.mjs",
+      "sha256": "3bb152bcdee44c43fc0384291a3103e17b8dcf65564114d8ca3093f3ade55673",
+      "size": 5728,
+      "executable": false
+    },
+    {
+      "path": "enhancer/lib/panel-context.mjs",
+      "sha256": "df44e9d056b63ce9ce81d8b92baf3add66af95c9a743e1e2dfb883da4c12f051",
+      "size": 5563,
+      "executable": false
+    },
+    {
+      "path": "enhancer/lib/panel-module-registry.mjs",
+      "sha256": "e92e61799126f04a43e6648279834ecd06c0ebaea5183663139a2a67c1b36589",
+      "size": 75,
       "executable": false
     },
     {
@@ -237,6 +267,18 @@
       "executable": false
     },
     {
+      "path": "enhancer/lib/workspace-panel-bridge.mjs",
+      "sha256": "6d33a0b40dbc52baafd89fc7ab02ee58f0dd7f5d7e1a83768e0e852993097881",
+      "size": 4637,
+      "executable": false
+    },
+    {
+      "path": "enhancer/lib/workspace-panel-embed.mjs",
+      "sha256": "8827d7660098c8ab38b57d4ac7f953d3f09ad7d35d2a0646f557f84359f2b361",
+      "size": 1376,
+      "executable": false
+    },
+    {
       "path": "enhancer/LICENSE",
       "sha256": "eb15824a5cc78ffd3853b3e56ace67d989d4c7958028ebf52c3c5f956451a8ad",
       "size": 1088,
@@ -246,6 +288,30 @@
       "path": "enhancer/package.json",
       "sha256": "95ecd9954742733a352253daa26334169dbe1a373e1fd299a51d18250774fb47",
       "size": 916,
+      "executable": false
+    },
+    {
+      "path": "enhancer/panel/public/index.html",
+      "sha256": "0ab76c57f98b58e74a39755b32dee2cfb01dbaa996fc0206338d24f8778267b3",
+      "size": 918,
+      "executable": false
+    },
+    {
+      "path": "enhancer/panel/public/module-registry.mjs",
+      "sha256": "ecd49e66deb3d6ff9c39557ce86d4da10293e39f65053ff5fb0fcf873ae05689",
+      "size": 1906,
+      "executable": false
+    },
+    {
+      "path": "enhancer/panel/public/panel.css",
+      "sha256": "493d0d0a9bbb00f2cef9815a6ae05b38c144fa03117522528ea0363a3877701c",
+      "size": 3427,
+      "executable": false
+    },
+    {
+      "path": "enhancer/panel/public/panel.js",
+      "sha256": "91f3b44c40dbeb39032a1eb6dbd8a5c69610ec9cb6294d982f393bdc11b5b7eb",
+      "size": 7498,
       "executable": false
     },
     {
@@ -268,8 +334,8 @@
     },
     {
       "path": "enhancer/scripts/injector.mjs",
-      "sha256": "4342d17b23fda0a8dde94c68fc354535dd50849c4357d0aec6e1ce925a0588bd",
-      "size": 23417,
+      "sha256": "c5be1c943f562e1a3ee7751f9478abe52aa806e646022cb7a817cdac6f84f140",
+      "size": 36785,
       "executable": false
     },
     {
@@ -292,8 +358,8 @@
     },
     {
       "path": "enhancer/scripts/install-macos.mjs",
-      "sha256": "ced5179272ae34e8722e8f2e92edd669c11a5393e2cfab16e69aa13c064dd8f8",
-      "size": 19785,
+      "sha256": "9e4ae1f8faa23df7d9508c815f0fa506699150458682c2a780a191ea0b52423c",
+      "size": 20182,
       "executable": false
     },
     {
@@ -334,14 +400,14 @@
     },
     {
       "path": "enhancer/scripts/verify-macos.mjs",
-      "sha256": "54875743d795510af575072a510e38d540f1e5fd0be8ddf1e37c4ae5b662c95a",
-      "size": 4916,
+      "sha256": "15f06d93f4a8ddbf56d3bf36a31bc0120de577a9d909bf7af990c3d8be76f6ea",
+      "size": 5946,
       "executable": false
     },
     {
       "path": "enhancer/scripts/verify-native-right-rail.mjs",
-      "sha256": "d0ff443ea373b4c39aed8076a1a0a3376fad30bd719f406ac34e08593114ec18",
-      "size": 14786,
+      "sha256": "6d45b3311041cd34b0da9175af8003b4b1ddc806dc630e64c14d1c1b15b79bc1",
+      "size": 18849,
       "executable": false
     },
     {
@@ -382,14 +448,44 @@
     },
     {
       "path": "enhancer/test/install-macos.test.mjs",
-      "sha256": "d0ac0857779e4ccc00d1f33466953d0bf0eec8ea73740b58c2077181e9186ac2",
-      "size": 12192,
+      "sha256": "875f9a5423fdbaecf57279a4597226f6ef511ba1c2d81e2cf6f8dd9a890afca2",
+      "size": 13638,
+      "executable": false
+    },
+    {
+      "path": "enhancer/test/mcp-stdio-client.test.mjs",
+      "sha256": "40b7c9f3db86dd22633c6617cb9637e0b4bbf8f5d65d99e069955b43accf40b6",
+      "size": 1815,
       "executable": false
     },
     {
       "path": "enhancer/test/native-right-rail.test.mjs",
-      "sha256": "25f3a5332a9713d96f7ba3fc11b1ec76f8df3ab631ef74a09e03e576d9596234",
-      "size": 2227,
+      "sha256": "3a21dd9c313b3d55fcad79e9bb7e8018f157af7209f6019f8b750722b5e643cd",
+      "size": 3867,
+      "executable": false
+    },
+    {
+      "path": "enhancer/test/native-workspace-client.test.mjs",
+      "sha256": "8ee07e4140aee6c6e4ae711375080ba19905a92d55778dd69fc615d545a6b530",
+      "size": 4775,
+      "executable": false
+    },
+    {
+      "path": "enhancer/test/panel-bridge-security.test.mjs",
+      "sha256": "833e02d9baaf0fe8b74b3d234d7d100f8aeaf3f533d3925d74cfd1f9574945a4",
+      "size": 5463,
+      "executable": false
+    },
+    {
+      "path": "enhancer/test/panel-context.test.mjs",
+      "sha256": "f383ea19b0f7f6ee404d2966452f52ef530d65115da8660cca94567683529d80",
+      "size": 4833,
+      "executable": false
+    },
+    {
+      "path": "enhancer/test/panel-module-registry.test.mjs",
+      "sha256": "67e695177f8b0de969ba55361d7a88e7c2cae8f0c27b28c71e9bc034a6396df5",
+      "size": 1978,
       "executable": false
     },
     {

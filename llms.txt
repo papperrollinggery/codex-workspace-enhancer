@@ -1,10 +1,12 @@
 # Codex Workspace Enhancer
 
-> Codex Workspace Enhancer is a native, port-free OpenAI Codex plugin and MCP App for arranging approved project images and creative notes on an infinite canvas inside the current conversation.
+> Codex Workspace Enhancer is a native, port-free OpenAI Codex plugin and MCP App for arranging approved project images and creative notes, with an optional macOS right-side workspace panel.
 
 Canonical repository: https://github.com/papperrollinggery/codex-workspace-enhancer
 
-The preferred native plugin uses an stdio MCP server and a sandboxed `ui://` view. It scans project images read-only after a matching host root or one-time exact-path in-widget approval. An approved path and validated Codex worktrees linked to the same Git repository reopen directly without repeated approval clicks. Pending first-approval requests survive normal MCP server restarts for up to 12 hours. It stores revisioned canvas state in user application data and attaches selected paths as structured conversation context without automatically sending a message. Fullscreen is requested but always decided by the Codex host.
+The preferred native plugin uses an stdio MCP server and a sandboxed `ui://` view. It scans project images read-only after a matching host root or one-time exact-path in-widget approval. An approved path and validated Codex worktrees linked to the same Git repository reopen directly without repeated approval clicks. Pending first-approval requests survive normal MCP server restarts for up to 12 hours. It stores revisioned canvas state in user application data and attaches selected paths as structured conversation context without automatically sending a message. Inline, fullscreen, and PiP are requested independently from the host's actual display result.
+
+The optional macOS panel runs only in an isolated loopback-CDP Codex window. It exposes six visible modules—overview, assets, canvas, tasks, Git changes, and tools—while reusing the installed native Visual Workspace MCP session. It does not start a panel HTTP server, does not require the legacy AssetBrowser `5177` service, and never auto-sends composer text.
 
 ## Documentation
 
@@ -26,5 +28,5 @@ The preferred native plugin uses an stdio MCP server and a sandboxed `ui://` vie
 - The host may keep the app inline even when fullscreen is requested.
 - Display receipts are bounded app diagnostics, not host-signed attestations.
 - The Codex host snapshot tested on 2026-08-18 exposed no plugin tool for programmatically closing fullscreen; this capability is version-specific and must be rechecked after host updates.
-- Legacy adapters under `assets/runtime/` use separate CDP and loopback-service boundaries and are not required by the native plugin.
+- The optional macOS panel under `assets/runtime/enhancer/` uses a separate loopback-CDP boundary and is not required by the native plugin; the legacy AssetBrowser service remains independently optional.
 - `llms.txt` is a proposed community format; its presence is not evidence of search ranking or universal AI crawler support.

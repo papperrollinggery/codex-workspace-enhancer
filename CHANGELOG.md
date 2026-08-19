@@ -2,6 +2,21 @@
 
 All notable public changes are documented here. Versions follow Semantic Versioning for the native plugin.
 
+## [0.3.0] - 2026-08-19
+
+### Added
+
+- Negotiate picture-in-picture alongside inline and fullscreen while preserving requested and actual display modes as separate receipt fields.
+- Add an optional macOS right-side workspace panel with overview, assets, canvas, task, Git change, and tool modules.
+- Reuse the installed native Visual Workspace MCP server and its private approved session; no second canvas store or panel HTTP server is introduced.
+- Add bounded Git/worktree status and allowlisted native tool actions that either open a verified control or prefill the composer without sending.
+- Add explicit `enhanced-window`, `attach-existing`, and `stop` lifecycle modes plus stopped-port verification.
+
+### Security
+
+- Bind panel API access to an exact per-open nonce and OOPIF session, keep MCP access tokens in Node memory, and fail closed on unknown routes, oversized requests, task changes, and missing project approval.
+- Keep the optional CDP endpoint loopback-only and stop only the isolated app process carrying the exact configured debugging-port marker.
+
 ## [0.2.2] - 2026-08-19
 
 ### Added

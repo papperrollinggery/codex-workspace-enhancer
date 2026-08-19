@@ -15,6 +15,17 @@ export const SUPPORTED_APP_PATHS = Object.freeze([
   "/Applications/Codex.app",
 ]);
 
+export function enhancedWindowMarker(label = LAUNCH_AGENT_LABEL) {
+  return `--codex-workspace-enhancer-owned-window=${label}`;
+}
+
+export function isOwnedEnhancedProcessCommand(command, { port = DEFAULT_DEBUG_PORT, label = LAUNCH_AGENT_LABEL } = {}) {
+  const value = String(command || "");
+  return value.includes(`--remote-debugging-port=${port}`)
+    && value.includes(enhancedWindowMarker(label))
+    && (value.includes("/Applications/Codex.app/") || value.includes("/Applications/ChatGPT.app/"));
+}
+
 function xml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -282,6 +293,7 @@ fi
 DOMAIN="gui/$(/usr/bin/id -u)"
 SERVICE="\${DOMAIN}/${plan.label}"
 PLIST=${JSON.stringify(plan.plistPath)}
+OWNED_WINDOW_MARKER=${JSON.stringify(enhancedWindowMarker(plan.label))}
 
 start_injector() {
   /bin/launchctl bootstrap "\${DOMAIN}" "\${PLIST}" >/dev/null 2>&1 || true
@@ -292,11 +304,14 @@ start_injector() {
 # 安装器不会自动重启它，也不会退出或终止普通 ChatGPT/Codex 窗口。
 if [[ "\${MODE}" == "stop" ]]; then
   /bin/launchctl bootout "\${SERVICE}" >/dev/null 2>&1 || true
-  ENHANCED_PIDS=$(/bin/ps -axo pid=,command= | /usr/bin/awk -v marker="--remote-debugging-port=\${PORT}" '
-    index($0, marker) && (index($0, "/Applications/Codex.app/") || index($0, "/Applications/ChatGPT.app/")) { print $1 }
-  ')
+  ENHANCED_PIDS=$(/usr/sbin/lsof -nP -tiTCP:"\${PORT}" -sTCP:LISTEN 2>/dev/null || true)
   for ENHANCED_PID in \${(f)ENHANCED_PIDS}; do
-    [[ -n "\${ENHANCED_PID}" && "\${ENHANCED_PID}" != "$$" ]] && /bin/kill -TERM "\${ENHANCED_PID}" 2>/dev/null || true
+    ENHANCED_COMMAND=$(/bin/ps -p "\${ENHANCED_PID}" -o command= 2>/dev/null || true)
+    if [[ "\${ENHANCED_COMMAND}" == *"--remote-debugging-port=\${PORT}"* \
+      && "\${ENHANCED_COMMAND}" == *"\${OWNED_WINDOW_MARKER}"* \
+      && ("\${ENHANCED_COMMAND}" == *"/Applications/Codex.app/"* || "\${ENHANCED_COMMAND}" == *"/Applications/ChatGPT.app/"*) ]]; then
+      /bin/kill -TERM "\${ENHANCED_PID}" 2>/dev/null || true
+    fi
   done
   exit 0
 fi
@@ -332,6 +347,7 @@ fi
   "--remote-debugging-address=127.0.0.1" \\
   "--remote-debugging-port=\${PORT}" \\
   "--remote-allow-origins=http://127.0.0.1:\${PORT}" \\
+  "\${OWNED_WINDOW_MARKER}" \\
   "--enable-features=LocalNetworkAccessForSubframeNavigationsWarningOnly"
 start_injector
 `;

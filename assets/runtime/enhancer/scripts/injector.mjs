@@ -692,6 +692,8 @@ async function handleAssetConsoleBinding(payload) {
     return;
   }
   try {
+    workspacePanelRequestGeneration += 1;
+    await teardownWorkspacePanelProxy();
     await ensureAssetConsoleServer();
     if (generation !== assetConsoleRequestGeneration) return;
     const proxy = await setupAssetConsoleProxy(generation);
@@ -734,6 +736,7 @@ async function handleWorkspacePanelBinding(payload) {
 
   let nativeClient = null;
   try {
+    assetConsoleRequestGeneration += 1;
     await teardownAssetConsoleProxy();
     await teardownWorkspacePanelProxy();
     if (generation !== workspacePanelRequestGeneration) return;

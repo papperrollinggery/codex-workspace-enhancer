@@ -1,6 +1,6 @@
 # Codex Workspace Enhancer
 
-**A native, port-free visual workspace for OpenAI Codex.** Arrange project images, references, and creative notes on an infinite canvas without patching the Codex app or exposing a localhost service.
+**A native visual workspace and optional macOS right-side work panel for OpenAI Codex.** The MCP App remains port-free over stdio; the optional panel adds overview, assets, canvas, tasks, Git changes, and tool entry points in an isolated enhanced Codex window.
 
 [简体中文](README.zh-CN.md) · [Architecture](references/native-plugin.md) · [Security](SECURITY.md) · [AI-readable summary](llms.txt)
 
@@ -21,7 +21,8 @@ Creative work in Codex often spans reference images, generated frames, notes, an
 - Pan, zoom, resize, multi-select, and organize images on an infinite canvas.
 - Add creative notes and preserve a revisioned board between sessions.
 - Attach selected local image paths to the conversation context without automatically sending a message.
-- Request fullscreen while remaining usable inline when the host declines or does not support it.
+- Negotiate inline, fullscreen, or picture-in-picture (PiP), while reporting the host's actual mode independently.
+- Optionally open a visible macOS right-side panel that reuses the native Visual Workspace authorization and session instead of creating a second canvas store.
 
 The preferred native plugin uses **stdio**, `ui://` resources, and a bundled standalone MCP server. It does not open a TCP port, inject CSS into Codex, modify `/Applications/ChatGPT.app` or `/Applications/Codex.app`, or replace host-owned chrome.
 
@@ -45,6 +46,25 @@ Open the native visual workspace for this project directly. Do not ask me to con
 
 The first time an unrelated project is opened without a matching host root, the widget shows its exact path for one approval click. After that, Codex can reopen the approved path directly, including validated Codex worktrees linked to the same Git repository, without another click. Pending first-approval requests are stored locally for up to 12 hours so a normal MCP server restart does not leave a visible but dead button.
 
+### Optional macOS right-side panel
+
+The right-side panel is an uninstallable adapter, not an automatic host-owned plugin slot. It does not patch `/Applications/Codex.app` and leaves ordinary Codex windows untouched:
+
+```bash
+node assets/runtime/enhancer/scripts/install-macos.mjs --dry-run
+node assets/runtime/enhancer/scripts/install-macos.mjs --activate
+open "$HOME/Applications/Codex Sidebar Enhancer.app"
+```
+
+The isolated window exposes CDP only on `127.0.0.1:9231`. The panel adds no HTTP server of its own and reads project data through the installed stdio Visual Workspace server. To stop the injector and only the isolated enhanced app process:
+
+```bash
+"$HOME/Applications/Codex Sidebar Enhancer.app/Contents/MacOS/Codex Sidebar Enhancer" --mode stop
+node assets/runtime/enhancer/scripts/verify-macos.mjs --installed --skip-launchctl --require-stopped
+```
+
+Use `--mode attach-existing --port 9231` only when you manually launched Codex with that same loopback CDP endpoint.
+
 ## Safety and privacy model
 
 | Boundary | Behavior |
@@ -58,9 +78,9 @@ The first time an unrelated project is opened without a matching host root, the 
 | Session access | Opaque model-hidden in-memory capability; 2-hour idle and 12-hour absolute expiry |
 | Canvas state | Approved absolute project root plus revisioned canvas JSON in the user's application-data directory; no upload |
 | Conversation handoff | Structured context only; the user still sends the next message |
-| Network | No listening socket for native-plugin features |
+| Network | No listening socket for native-plugin features; optional panel uses the isolated Codex loopback CDP endpoint only |
 
-Fullscreen is a host-negotiated display mode, not a plugin guarantee. The diagnostic receipt records the initial requested mode and the app-reported actual mode; it is not a host-signed attestation. In the host snapshot tested on 2026-08-18, no plugin tool was exposed for programmatically closing the fullscreen surface; re-check this version-specific capability after host updates.
+Fullscreen and PiP are host-negotiated display modes, not plugin guarantees. The diagnostic receipt records the initial requested mode and the app-reported actual mode; it is not a host-signed attestation. In the host snapshot tested on 2026-08-18, no plugin tool was exposed for programmatically closing the fullscreen surface; re-check this version-specific capability after host updates.
 
 See [SECURITY.md](SECURITY.md) for the trust model and vulnerability reporting.
 
@@ -97,12 +117,13 @@ plugin/codex-workspace-enhancer/          Preferred native Codex plugin
   scripts/                                Build, protocol, release, and browser QA
   test/                                   Storage and security regression tests
 references/native-plugin.md               Architecture and host-capability limits
-assets/runtime/                           Optional legacy sidebar/AssetBrowser adapters
+assets/runtime/                           Optional interface and AssetBrowser adapters
+  enhancer/panel/public/                  macOS right-side workspace panel shell
 ```
 
-## Native plugin vs. legacy adapters
+## Native plugin and optional interface adapters
 
-The native plugin is the default and needs no localhost service. `assets/runtime/enhancer/` and `assets/runtime/asset-browser/` are retained for older sidebar and advanced AssetBrowser workflows. Those adapters have different CDP/local-service security boundaries and must remain stopped unless their capabilities are explicitly needed.
+The native plugin is the default and needs no localhost service. `assets/runtime/enhancer/` now provides the optional macOS right-side panel as well as the older sidebar enhancement. The new panel reuses the native MCP session and does not require the legacy AssetBrowser service on port `5177`. `assets/runtime/asset-browser/` remains a separate advanced legacy workflow and should stay stopped unless explicitly needed.
 
 ## Canonical facts for search and AI citation
 
@@ -111,7 +132,8 @@ The native plugin is the default and needs no localhost service. `assets/runtime
 - **Primary use:** visual reference management and creative image comparison inside a Codex conversation
 - **Transport:** stdio; no TCP listener in the native plugin
 - **Data model:** read-only project images plus user-level revisioned canvas state
-- **Display modes:** inline and host-negotiated fullscreen
+- **Display modes:** inline, host-negotiated fullscreen, and host-negotiated PiP
+- **Optional macOS surface:** a six-module right-side workspace panel in an isolated loopback-CDP Codex window
 - **Repository:** <https://github.com/papperrollinggery/codex-workspace-enhancer>
 - **License:** MIT, with preserved third-party notices for the legacy adapter and bundled dependencies
 

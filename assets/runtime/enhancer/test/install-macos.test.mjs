@@ -9,7 +9,9 @@ import {
   LAUNCH_AGENT_LABEL,
   OWNERSHIP_MARKER_CONTENT,
   createInstallPlan,
+  enhancedWindowMarker,
   expectedOwnedPaths,
+  isOwnedEnhancedProcessCommand,
   validateInstallManifest,
 } from "../lib/install-config.mjs";
 import {
@@ -78,8 +80,17 @@ test("launcher supports ChatGPT and Codex without an automatic restart", () => {
   assert.match(plan.launcherScript, /attach-existing/);
   assert.match(plan.launcherScript, /MODE="stop"/);
   assert.doesNotMatch(plan.launcherScript, /killall|pkill/u);
+  assert.match(plan.launcherScript, new RegExp(enhancedWindowMarker().replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
   assert.match(plan.plist, /<key>ProcessType<\/key>\s*<string>Background<\/string>/);
   assert.match(plan.plist, /<key>KeepAlive<\/key>\s*<true\/>/);
+});
+
+test("stop ownership rejects an ordinary attach-existing Codex process", () => {
+  const ordinary = "/Applications/Codex.app/Contents/MacOS/Codex --remote-debugging-port=9231";
+  const owned = `${ordinary} ${enhancedWindowMarker()}`;
+  assert.equal(isOwnedEnhancedProcessCommand(ordinary), false);
+  assert.equal(isOwnedEnhancedProcessCommand(owned), true);
+  assert.equal(isOwnedEnhancedProcessCommand(owned, { port: 9333 }), false);
 });
 
 test("verifier accepts installed and stopped lifecycle contracts", () => {

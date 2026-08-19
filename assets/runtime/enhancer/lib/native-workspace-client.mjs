@@ -40,15 +40,12 @@ export async function discoverInstalledVisualWorkspace({ codexHome = path.join(o
     return candidate;
   }
   const cacheRoot = path.join(codexHome, "plugins", "cache");
+  const pluginRoot = path.join(cacheRoot, "codex-workspace-enhancer", "codex-workspace-enhancer");
   const candidates = [];
-  for (const marketplace of await readdir(cacheRoot, { withFileTypes: true }).catch(() => [])) {
-    if (!marketplace.isDirectory()) continue;
-    const pluginRoot = path.join(cacheRoot, marketplace.name, "codex-workspace-enhancer");
-    for (const version of await readdir(pluginRoot, { withFileTypes: true }).catch(() => [])) {
-      if (!version.isDirectory()) continue;
-      const candidate = await candidateFromPluginRoot(path.join(pluginRoot, version.name)).catch(() => null);
-      if (candidate) candidates.push(candidate);
-    }
+  for (const version of await readdir(pluginRoot, { withFileTypes: true }).catch(() => [])) {
+    if (!version.isDirectory()) continue;
+    const candidate = await candidateFromPluginRoot(path.join(pluginRoot, version.name)).catch(() => null);
+    if (candidate) candidates.push(candidate);
   }
   candidates.sort((left, right) => compareVersion(right.version, left.version));
   if (!candidates[0]) throw new Error("Installed Visual Workspace plugin was not found");

@@ -4,14 +4,21 @@
 
 The macOS adapter changes discovery, paths, lifecycle, launcher, and path validation. It does not replace the native Codex/ChatGPT information architecture, weaken the Asset Console token/origin/session checks, or modify the application bundle.
 
+## Design evidence
+
+- The stable [MCP Apps 2026-01-26 specification](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx) defines `inline`, `fullscreen`, and `pip`, requires the View to declare supported modes, and requires it to handle an actual mode different from the request.
+- The official [Codex App Server documentation](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md) documents thread, skill, app, plugin, MCP, approval, stdio, and Unix-socket surfaces. This adapter does not claim access to the Desktop app's private in-process App Server session.
+- Community projects [Taskboard](https://github.com/izscc/taskboard) and [Explodex](https://github.com/dan-dr/explodex/blob/main/docs/codex-architecture.md) demonstrate loopback-CDP injection, OOPIF/CSP constraints, and stable portal/side-panel anchors. They are design references, not compatibility guarantees; every supported Codex build still needs local host acceptance.
+
 ## Capability map
 
 | Capability | macOS implementation | Failure behavior |
 | --- | --- | --- |
-| Desktop discovery | `/Applications/ChatGPT.app`, then `/Applications/Codex.app` | Report absent; do not create or patch an app bundle |
+| Desktop discovery | `/Applications/Codex.app`, then `/Applications/ChatGPT.app` | Report absent; do not create or patch an app bundle |
 | Debug transport | Loopback CDP on `127.0.0.1:9231` | Injector waits; ordinary web targets are rejected |
+| Workspace panel | Per-open private OOPIF proxy over the same CDP session; native workspace data stays on stdio MCP | Wrong origin, nonce, frame, route, task, or approval state fails closed |
 | User startup | `~/Library/LaunchAgents/com.yubowen.codex-sidebar-enhancer.plist` | Ownership mismatch blocks install/uninstall |
-| User launcher | `~/Applications/Codex Sidebar Enhancer.app` | Running ChatGPT/Codex is left untouched and the user is prompted to quit normally |
+| User launcher | `~/Applications/Codex Sidebar Enhancer.app` | Opens a separate enhanced instance; ordinary ChatGPT/Codex windows are left untouched |
 | Enhancer runtime | `~/Library/Application Support/Codex Sidebar Enhancer` | Exact-root and ownership-marker checks |
 | Enhancer state | `~/Library/Application Support/CodexSidebarEnhancer` | Preserved during update and removed only by the owned uninstaller |
 | AssetBrowser runtime/data | `~/Library/Application Support/AssetBrowser` | Runtime files are manifest-owned; config, token, ledgers, projects and media remain user-owned |
@@ -25,10 +32,12 @@ The macOS adapter changes discovery, paths, lifecycle, launcher, and path valida
 1. `scripts/inspect-macos.mjs` performs a read-only machine and installation audit.
 2. `scripts/build-macos-manifest.mjs` records source hashes.
 3. `scripts/install-bundled-macos.mjs --dry-run` reports exact targets and preservation rules.
-4. `--activate` installs backend runtime files and the enhancer transactionally, creates a private API token if absent, and loads the per-user LaunchAgent without restarting the desktop app.
+4. `--activate` installs the enhancer transactionally and loads the per-user LaunchAgent without restarting the desktop app. The bundled legacy installer may also update AssetBrowser runtime while preserving its user data.
 5. `scripts/verify-macos.mjs --installed` binds validation to the installed copy.
 
-The first visible activation is intentionally separate: quit ChatGPT/Codex normally, then open `~/Applications/Codex Sidebar Enhancer.app`. This prevents the installer from killing the task that is performing the installation.
+The first visible activation is intentionally separate: open `~/Applications/Codex Sidebar Enhancer.app`. Its default `--mode enhanced-window` launches an isolated instance with loopback CDP even when an ordinary Codex window is already open. `--mode attach-existing --port 9231` connects only to an explicitly prepared endpoint. `--mode stop` unloads the owned injector and terminates only app processes carrying the exact configured debugging-port marker; it does not use `killall` or `pkill`.
+
+The modern workspace panel does not require the legacy AssetBrowser server on port `5177`. It discovers the installed `codex-workspace-enhancer` plugin, opens the exact task project through the native MCP server, and keeps workspace IDs and access tokens outside browser JavaScript.
 
 ## UI material policy
 
@@ -36,4 +45,4 @@ Use translucent glass for navigation, toolbars, segmented controls, and floating
 
 ## Verification boundary
 
-Deterministic installation, hashes, LaunchAgent syntax/load state, authenticated AssetBrowser health, DOM syntax, UI layout, and reduced-effect fallbacks can be verified locally. Task A → B iframe invalidation and live renderer injection require a desktop process started with the debug launcher; do not label those verified merely because installation succeeded.
+Deterministic installation, hashes, LaunchAgent syntax/load state, closed-CDP state, DOM syntax, UI layout, and reduced-effect fallbacks can be verified locally. Task A → B iframe invalidation, native MCP approval reuse, and live renderer injection require a desktop process started with the debug launcher; do not label those verified merely because installation succeeded.

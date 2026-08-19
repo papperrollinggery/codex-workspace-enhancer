@@ -2078,6 +2078,10 @@
     const frame = document.getElementById(ASSET_CONSOLE_FRAME_ID);
     if (!frame || event.source !== frame.contentWindow) return;
     const message = event.data;
+    if (message?.source === "workspace-panel" && message.action === "close") {
+      closeAssetConsolePanel();
+      return;
+    }
     if (!message || message.source !== "asset-console") return;
     if (message.action === "view-changed") {
       setAssetConsoleView(message.view, { notifyFrame: false });

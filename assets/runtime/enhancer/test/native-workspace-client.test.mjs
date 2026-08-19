@@ -30,7 +30,7 @@ test("exports native workspace discovery and session clients", () => {
 
 test("discovers a regular installed server and rejects a symlink entry", async () => {
   const regular = await implementation.discoverInstalledVisualWorkspace({ explicitServerPath: path.join(pluginRoot, "dist", "server.mjs") });
-  assert.equal(regular.version, "0.2.2");
+  assert.equal(regular.version, "0.3.0");
   const symlinkPath = path.join(pluginRoot, "dist", "panel-test-server-link.mjs");
   await symlink(path.join(pluginRoot, "dist", "server.mjs"), symlinkPath);
   try {
@@ -38,6 +38,23 @@ test("discovers a regular installed server and rejects a symlink entry", async (
   } finally {
     await rm(symlinkPath, { force: true });
   }
+});
+
+test("automatic discovery ignores lookalike plugins from unrelated marketplaces", async () => {
+  const codexHome = path.join(temporary, "discovery-home");
+  const makeCandidate = async (marketplace, version) => {
+    const root = path.join(codexHome, "plugins", "cache", marketplace, "codex-workspace-enhancer", version);
+    await mkdir(path.join(root, ".codex-plugin"), { recursive: true });
+    await mkdir(path.join(root, "dist"), { recursive: true });
+    await writeFile(path.join(root, ".codex-plugin", "plugin.json"), JSON.stringify({ name: "codex-workspace-enhancer", version }));
+    await writeFile(path.join(root, "dist", "server.mjs"), "// fixture\n");
+    return root;
+  };
+  const trusted = await makeCandidate("codex-workspace-enhancer", "0.3.0");
+  await makeCandidate("lookalike-marketplace", "99.0.0");
+  const discovered = await implementation.discoverInstalledVisualWorkspace({ codexHome });
+  assert.equal(discovered.pluginRoot, await import("node:fs/promises").then(({ realpath }) => realpath(trusted)));
+  assert.equal(discovered.version, "0.3.0");
 });
 
 test("opens an approved project and reuses native workspace tools", async () => {
